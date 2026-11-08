@@ -10,6 +10,9 @@
     {"slug": "laundry-basket", "name": "Laundry basket", "category": "household", "text": "a white plastic laundry basket with handles", "split": false},
     {"slug": "potted-plant", "name": "Potted plant", "category": "household", "text": "a leafy green plant in a terracotta pot"},
     {"slug": "office-chair", "name": "Office chair", "category": "household", "text": "a black office chair with a five-star wheeled base"},
+    {"slug": "door", "name": "Door", "category": "moving", "kind": "articulated", "text": "a wooden interior door standing in its door frame", "motion": "the door swings open on its hinges and closes again"},
+    {"slug": "garden-gate", "name": "Garden gate", "category": "moving", "kind": "articulated", "text": "a wooden garden gate between two posts", "motion": "the gate swings open and closed on its hinges"},
+    {"slug": "wheelie-bin", "name": "Wheelie bin", "category": "moving", "kind": "articulated", "text": "a green wheelie bin with a hinged lid", "motion": "the lid flips open and falls shut"},
     {"slug": "skateboard", "name": "Skateboard", "category": "sports", "text": "a skateboard with wheels"},
     {"slug": "toolbox", "name": "Toolbox", "category": "odd", "text": "a red metal toolbox with a handle", "split": false},
     {"slug": "watermelon", "name": "Watermelon", "category": "food", "text": "a whole watermelon", "split": false},
@@ -65,9 +68,6 @@
     {"slug": "kid", "name": "Kid", "category": "people", "kind": "pedestrian", "text": "an eight-year-old child in jeans and a hoodie"},
     {"slug": "office-worker", "name": "Office worker", "category": "people", "kind": "pedestrian", "text": "an office worker in a navy suit"},
     {"slug": "grandma", "name": "Grandma", "category": "people", "kind": "pedestrian", "text": "an elderly woman with grey hair in a cardigan and long skirt"},
-    {"slug": "construction-worker", "name": "Construction worker", "category": "people", "kind": "pedestrian", "text": "a construction worker in a hi-vis vest, hard hat and work boots"},
-    {"slug": "door", "name": "Door", "category": "moving", "kind": "articulated", "text": "a wooden interior door standing in its door frame", "motion": "the door swings open on its hinges and closes again"},
-    {"slug": "garden-gate", "name": "Garden gate", "category": "moving", "kind": "articulated", "text": "a wooden garden gate between two posts", "motion": "the gate swings open and closed on its hinges"},
-    {"slug": "wheelie-bin", "name": "Wheelie bin", "category": "moving", "kind": "articulated", "text": "a green wheelie bin with a hinged lid", "motion": "the lid flips open and falls shut"}
+    {"slug": "construction-worker", "name": "Construction worker", "category": "people", "kind": "pedestrian", "text": "a construction worker in a hi-vis vest, hard hat and work boots"}
   ]
 }
