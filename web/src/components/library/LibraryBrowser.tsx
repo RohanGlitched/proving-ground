@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getLibrary, objectUrl, type LibraryEntry } from "@/lib/client/api";
+import { getJob, getLibrary, objectUrl, type LibraryEntry } from "@/lib/client/api";
 import { Thumb } from "@/components/arena/Thumb";
 import { sizeLabel } from "@/components/arena/LibraryDrawer";
 import { ObjectViewer } from "./ObjectViewer";
@@ -40,6 +40,36 @@ export function LibraryBrowser() {
     const vol = (e: LibraryEntry) => e.size[0] * e.size[1] * e.size[2];
     return list.sort((a, b) => (sort === "new" ? b.createdAt - a.createdAt : sort === "big" ? vol(b) - vol(a) : b.parts - a.parts));
   }, [items, cat, q, sort]);
+
+  const [exporting, setExporting] = useState<string | null>(null);
+  async function exportAs(e: LibraryEntry, format: string) {
+    setExporting(format);
+    setPackMsg(null);
+    try {
+      const r = await fetch(`/api/objects/${e.id}/export`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ format }) });
+      const d = (await r.json().catch(() => ({}))) as { status?: string; url?: string; jobId?: string; error?: string };
+      if (!r.ok) throw new Error(d.error ?? "Export is not available right now");
+      let url = d.url;
+      if (!url && d.jobId) {
+        setPackMsg("Lux3D is converting it. This takes under a minute.");
+        for (let i = 0; i < 60 && !url; i++) {
+          await new Promise((res) => setTimeout(res, 4000));
+          const j = await getJob(d.jobId);
+          if (j.status === "failed") throw new Error(j.error ?? "Lux3D could not convert it");
+          if (j.status === "done") url = `/api/objects/${e.id}/export/${format}`;
+        }
+      }
+      if (!url) throw new Error("The conversion is taking longer than usual; try again in a minute");
+      const a = document.createElement("a");
+      a.href = url;
+      a.click();
+      setPackMsg(`Downloaded ${format.replace("_zip", "").toUpperCase()} from Lux3D's exporter.`);
+    } catch (x) {
+      setPackMsg((x as Error).message);
+    } finally {
+      setExporting(null);
+    }
+  }
 
   async function pack(e: LibraryEntry) {
     setPacking(true);
@@ -154,6 +184,26 @@ export function LibraryBrowser() {
                   <button onClick={() => pack(open)} disabled={packing} className="inline-flex h-11 items-center rounded-[10px] border border-ink/20 px-5 font-semibold hover:bg-ink/5 disabled:opacity-50">
                     {packing ? "Building the pack…" : "Download robot-ready pack"}
                   </button>
+                </div>
+                <div className="mt-4">
+                  <div className="text-[13px] font-semibold text-ink-3">Export with Lux3D</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {[
+                      ["stl", "STL for 3D printing"],
+                      ["3mf", "3MF"],
+                      ["usdz", "USDZ"],
+                      ["fbx_zip", "FBX"],
+                    ].map(([f, label]) => (
+                      <button
+                        key={f}
+                        onClick={() => exportAs(open, f)}
+                        disabled={!!exporting}
+                        className="h-9 rounded-[8px] border border-ink/15 px-3 text-[13px] font-semibold hover:bg-ink/5 disabled:opacity-50"
+                      >
+                        {exporting === f ? "Converting…" : label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {packMsg && <p className="mt-3 text-[13.5px] text-ink-2">{packMsg}</p>}
                 <p className="mt-6 text-[13.5px] leading-relaxed text-ink-3">
