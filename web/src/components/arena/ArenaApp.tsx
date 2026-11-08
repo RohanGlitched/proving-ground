@@ -23,7 +23,7 @@ const STARTER = ["traffic-cone", "cardboard-box", "kitchen-chair", "car-tire", "
 let uidN = 0;
 const newUid = () => `o${Date.now().toString(36)}${(uidN++).toString(36)}`;
 
-export function ArenaApp({ courseId, openMake }: { courseId?: string; openMake?: boolean }) {
+export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; openMake?: boolean; addId?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<ArenaView | null>(null);
   const simRef = useRef<ArenaSim | null>(null);
@@ -51,6 +51,7 @@ export function ArenaApp({ courseId, openMake }: { courseId?: string; openMake?:
   const [panelOpen, setPanelOpen] = useState(true);
   const [readout, setReadout] = useState({ speed: 0, t: 0, contacts: 0 });
   const sceneVersion = useRef(0);
+  const prevStatus = useRef<FrameHeader["status"]>("running");
 
   const byId = useMemo(() => new Map(library.map((e) => [e.id, e])), [library]);
   const byUid = useMemo(() => new Map(placed.map((p) => [p.uid, p])), [placed]);
@@ -119,13 +120,12 @@ export function ArenaApp({ courseId, openMake }: { courseId?: string; openMake?:
       const h = headerRef.current;
       if (!h) return;
       setReadout({ speed: h.speed, t: h.t, contacts: h.contacts });
-      setStatus((s) => {
-        if (s !== h.status) {
-          if (h.status === "fell") say(`Fell at ${h.t.toFixed(2)} s`, "fault");
-          if (h.status === "goal") say(`Reached the goal in ${h.t.toFixed(2)} s`, "pass");
-        }
-        return h.status;
-      });
+      if (prevStatus.current !== h.status) {
+        if (h.status === "fell") say(`Fell at ${h.t.toFixed(2)} s`, "fault");
+        if (h.status === "goal") say(`Reached the goal in ${h.t.toFixed(2)} s`, "pass");
+        prevStatus.current = h.status;
+        setStatus(h.status);
+      }
     }, 125);
     return () => clearInterval(t);
   }, [say]);
@@ -153,9 +153,11 @@ export function ArenaApp({ courseId, openMake }: { courseId?: string; openMake?:
     seeded.current = true;
     const pick = STARTER.map((s) => library.find((e) => e.slug === s)).filter(Boolean) as LibraryEntry[];
     const fallback = library.filter((e) => e.kind === "object").slice(0, 3);
-    const chosen = (pick.length >= 2 ? pick : fallback).slice(0, 3);
+    let chosen = (pick.length >= 2 ? pick : fallback).slice(0, 3);
+    const extra = addId ? library.find((e) => e.id === addId) : undefined;
+    if (extra) chosen = [extra, ...chosen.filter((e) => e.id !== extra.id)].slice(0, 3);
     setPlaced(chosen.map((e, i) => ({ uid: newUid(), objectId: e.id, name: e.name, x: 1.6 + i * 0.95, y: i === 1 ? -0.35 : 0.3 * (i ? 1 : -0.4), yaw: i * 0.6 })));
-  }, [boot, courseId, libLoading, library, say]);
+  }, [boot, courseId, libLoading, library, say, addId]);
 
   // ---- keep the view and the physics scene in sync with placements ----
   const parts = useCallback((objectId: string) => {
