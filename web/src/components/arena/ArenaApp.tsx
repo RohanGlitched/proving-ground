@@ -87,10 +87,15 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
           headerRef.current = h;
           view.applyFrame(buf, layout.header, layout.robotGeoms);
         });
+        const lastSaid = new Map<string, number>();
         offContact = sim.onContact((c: ContactEvent) => {
           const uid = c.entityId;
           view.flashContact(uid);
-          say(`Touched ${c.entityName} with the ${c.robotBody.replace(/_link|_/g, " ").trim()} · ${c.peakForce.toFixed(0)} N`, "ink");
+          // one line per object per second of sim time, not one per contact
+          const prev = lastSaid.get(uid);
+          if (prev != null && c.t - prev < 1 && c.t >= prev) return;
+          lastSaid.set(uid, c.t);
+          say(`Touched ${c.entityName} with the ${c.robotBody.replace(/_link|_/g, " ").replace(/\s+/g, " ").trim()}`, "ink");
         });
         setBoot("ready");
       } catch (e) {
