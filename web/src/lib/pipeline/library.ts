@@ -29,17 +29,20 @@ export type ObjectMeta = {
   createdAt: number;
   credits: number;
   lux3dTasks: Record<string, string>;
+  /** Articulated objects: number of joints in parts.json (pivot + axis + limits); urdf = objects/{id}/urdf.zip exists. */
+  joints?: number;
+  urdf?: boolean;
   /** Pedestrians: the walk clip baked into visual.glb (in place: move the root along the path yourself). */
   animated?: { clip: string; inPlace?: boolean; duration?: number };
 };
 
-export type LibraryEntry = Pick<ObjectMeta, "id" | "slug" | "name" | "kind" | "source" | "category" | "size" | "parts" | "volume" | "createdAt" | "hasInput" | "style">;
+export type LibraryEntry = Pick<ObjectMeta, "id" | "slug" | "name" | "kind" | "source" | "category" | "size" | "parts" | "volume" | "joints" | "createdAt" | "hasInput" | "style">;
 export type LibraryDoc = { items: LibraryEntry[]; updatedAt: number };
 
 export const LIBRARY_KEY = "library.json";
 
 export function toEntry(m: ObjectMeta): LibraryEntry {
-  return { id: m.id, slug: m.slug, name: m.name, kind: m.kind, source: m.source, category: m.category, size: m.size, parts: m.parts, volume: m.volume, createdAt: m.createdAt, hasInput: m.hasInput, style: m.style };
+  return { id: m.id, slug: m.slug, name: m.name, kind: m.kind, source: m.source, category: m.category, size: m.size, parts: m.parts, volume: m.volume, joints: m.joints, createdAt: m.createdAt, hasInput: m.hasInput, style: m.style };
 }
 
 /** Adds (or replaces, by id) an entry in library.json with generation-match. */

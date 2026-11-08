@@ -1,9 +1,10 @@
 import { Document, Logger, NodeIO, type Node as GNode, type mat4 } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
-import { clearNodeParent, clearNodeTransform, dedup, getBounds, meshopt, prune, simplify, textureCompress, weld } from "@gltf-transform/functions";
+import { clearNodeParent, clearNodeTransform, dedup, getBounds, mergeDocuments, meshopt, prune, simplify, textureCompress, unpartition, weld } from "@gltf-transform/functions";
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
 import sharp from "sharp";
 import { Vector3 } from "three";
+import { unzipSync } from "three/examples/jsm/libs/fflate.module.js";
 import { ConvexHull } from "three/examples/jsm/math/ConvexHull.js";
 
 /**
@@ -44,6 +45,23 @@ export type PartsDoc = {
   volume: number;
   parts: Part[];
   animated?: { clips: { name: string; duration: number }[]; inPlace?: boolean };
+  /** Articulated objects: joints between parts (indices into parts), in the same object frame. */
+  joints?: Joint[];
+};
+
+/**
+ * One URDF joint. Rotate part `child` by angle θ ∈ [lower, upper] (radians) about the line through `pivot`
+ * along `axis`; a prismatic joint slides along `axis` by [lower, upper] metres.
+ */
+export type Joint = {
+  name: string;
+  type: string;
+  parent: number;
+  child: number;
+  pivot: [number, number, number];
+  axis: [number, number, number];
+  lower: number;
+  upper: number;
 };
 
 export type ProcessStats = {
@@ -509,6 +527,152 @@ export function bodyWithoutArms(p: Float64Array): Float64Array {
   const out: number[] = [];
   for (let i = 0; i < p.length; i += 3) if (Math.abs(p[i + axis] - c) <= half) out.push(p[i], p[i + 1], p[i + 2]);
   return out.length >= 12 ? Float64Array.from(out) : p;
+}
+
+/* ───────────────────────── articulation (URDF package) ───────────────────────── */
+
+type UrdfJoint = { name: string; type: string; parent: string; child: string; xyz: number[]; rpy: number[]; axis: number[]; lower: number; upper: number };
+
+function attr(tag: string, name: string): string | undefined {
+  const m = tag.match(new RegExp(`\\b${name}="([^"]*)"`));
+  return m ? m[1] : undefined;
+}
+const nums = (v: string | undefined, d: number[]) => (v ? v.trim().split(/\s+/).map(Number) : d);
+
+export function parseUrdf(xml: string): { links: { name: string; mesh?: string }[]; joints: UrdfJoint[] } {
+  const links = [...xml.matchAll(/<link\b([^>]*)>([\s\S]*?)<\/link>/g)].map((m) => {
+    const mesh = m[2].match(/<visual>[\s\S]*?<mesh\b([^>]*?)\/?>/);
+    return { name: attr(m[1], "name") ?? "", mesh: mesh ? attr(mesh[1], "filename") : undefined };
+  });
+  const joints = [...xml.matchAll(/<joint\b([^>]*)>([\s\S]*?)<\/joint>/g)].map((m) => {
+    const tag = (t: string) => m[2].match(new RegExp(`<${t}\\b([^>]*?)\\/?>`))?.[1] ?? "";
+    return {
+      name: attr(m[1], "name") ?? "",
+      type: attr(m[1], "type") ?? "fixed",
+      parent: attr(tag("parent"), "link") ?? "",
+      child: attr(tag("child"), "link") ?? "",
+      xyz: nums(attr(tag("origin"), "xyz"), [0, 0, 0]),
+      rpy: nums(attr(tag("origin"), "rpy"), [0, 0, 0]),
+      axis: nums(attr(tag("axis"), "xyz"), [1, 0, 0]),
+      lower: Number(attr(tag("limit"), "lower") ?? 0),
+      upper: Number(attr(tag("limit"), "upper") ?? 0),
+    };
+  });
+  return { links, joints };
+}
+
+/** Column-major 4×4 from a URDF origin (rpy is fixed-axis X, then Y, then Z: R = Rz·Ry·Rx). */
+function originMatrix(xyz: number[], rpy: number[]): number[] {
+  const [r, p, y] = rpy;
+  const cr = Math.cos(r), sr = Math.sin(r), cp = Math.cos(p), sp = Math.sin(p), cy = Math.cos(y), sy = Math.sin(y);
+  const R = [
+    [cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr],
+    [sy * cp, sy * sp * sr + cy * cr, sy * sp * cr - cy * sr],
+    [-sp, cp * sr, cp * cr],
+  ];
+  return [R[0][0], R[1][0], R[2][0], 0, R[0][1], R[1][1], R[2][1], 0, R[0][2], R[1][2], R[2][2], 0, xyz[0], xyz[1], xyz[2], 1];
+}
+function mul(a: number[], b: number[]): number[] {
+  const o = new Array(16).fill(0);
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k];
+  return o;
+}
+const applyPoint = (m: number[], v: number[]) => [0, 1, 2].map((i) => m[i] * v[0] + m[4 + i] * v[1] + m[8 + i] * v[2] + m[12 + i]);
+const applyDir = (m: number[], v: number[]) => [0, 1, 2].map((i) => m[i] * v[0] + m[4 + i] * v[1] + m[8 + i] * v[2]);
+const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+/** True when the buffer is a zip (Lux3D articulation returns a URDF package, not a GLB). */
+export const isZip = (b: Buffer) => b.length > 4 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04;
+
+/**
+ * Lux3D articulation output (a zip: urdf/robot.urdf + one GLB per link) → one GLB with one mesh node per
+ * link (part-0 = first link in the URDF, …), each baked into the object frame and centred on the bounding
+ * box like every other object, plus the joints as pivot + axis in that frame. Measured Nov 9 on a door:
+ * links frame + door, one revolute joint about +Y, 0 to 1.57 rad; the URDF is Y-up like the meshes.
+ */
+export async function articulatedToGlb(zip: Buffer): Promise<{ glb: Buffer; joints: Joint[]; links: string[] }> {
+  const files = unzipSync(new Uint8Array(zip)) as Record<string, Uint8Array>;
+  const urdfName = Object.keys(files).find((k) => k.toLowerCase().endsWith(".urdf"));
+  if (!urdfName) throw new Error("The articulation package has no URDF.");
+  const dir = urdfName.includes("/") ? urdfName.slice(0, urdfName.lastIndexOf("/") + 1) : "";
+  const { links, joints } = parseUrdf(new TextDecoder().decode(files[urdfName]));
+  const meshLinks = links.filter((l) => l.mesh && files[dir + l.mesh]);
+  if (meshLinks.length === 0) throw new Error("The articulation package has no meshes.");
+
+  // world transform per link: roots = identity, child = parent · origin
+  const world = new Map<string, number[]>();
+  const children = new Set(joints.map((j) => j.child));
+  for (const l of links) if (!children.has(l.name)) world.set(l.name, IDENTITY);
+  for (let pass = 0; pass < links.length; pass++)
+    for (const j of joints) if (world.has(j.parent) && !world.has(j.child)) world.set(j.child, mul(world.get(j.parent)!, originMatrix(j.xyz, j.rpy)));
+
+  const io = await gltfIO();
+  const target = new Document();
+  const scene = target.createScene("Scene");
+  target.getRoot().setDefaultScene(scene);
+  const groups: GNode[] = [];
+  for (const [i, l] of meshLinks.entries()) {
+    const src = await io.readBinary(files[dir + l.mesh!]);
+    const srcScenes = src.getRoot().listScenes();
+    const map = mergeDocuments(target, src);
+    const group = target.createNode(`part-${i}`);
+    scene.addChild(group);
+    for (const sc of srcScenes) {
+      const t = map.get(sc) as unknown as import("@gltf-transform/core").Scene;
+      for (const n of t.listChildren()) group.addChild(n);
+      t.dispose();
+    }
+    group.setMatrix((world.get(l.name) ?? IDENTITY) as unknown as mat4);
+    groups.push(group);
+  }
+  for (const s of target.getRoot().listScenes()) if (s !== scene) s.dispose();
+
+  // bake every mesh into the object frame; one mesh node per link
+  for (const [i, g] of groups.entries()) {
+    const meshes: GNode[] = [];
+    const walk = (n: GNode) => {
+      if (n.getMesh()) meshes.push(n);
+      n.listChildren().forEach(walk);
+    };
+    walk(g);
+    for (const n of meshes) {
+      clearNodeParent(n);
+      clearNodeTransform(n);
+    }
+    g.dispose();
+    meshes.forEach((n, k) => {
+      n.setName(meshes.length === 1 ? `part-${i}` : `part-${i}-mesh-${k}`);
+      n.getMesh()!.setName(`part-${i}`);
+    });
+  }
+  // centre on the bounding box
+  const b = getBounds(scene);
+  const c = [0, 1, 2].map((k) => (b.min[k] + b.max[k]) / 2);
+  for (const n of scene.listChildren()) {
+    n.setTranslation([-c[0], -c[1], -c[2]]);
+    clearNodeTransform(n);
+  }
+  const index = new Map(meshLinks.map((l, i) => [l.name, i]));
+  const out: Joint[] = joints
+    .filter((j) => index.has(j.parent) && index.has(j.child) && j.type !== "fixed")
+    .map((j) => {
+      const m = world.get(j.child) ?? IDENTITY;
+      const p = applyPoint(m, [0, 0, 0]).map((v, k) => r4(v - c[k]));
+      const a = applyDir(m, j.axis);
+      const len = Math.hypot(a[0], a[1], a[2]) || 1;
+      return {
+        name: j.name,
+        type: j.type,
+        parent: index.get(j.parent)!,
+        child: index.get(j.child)!,
+        pivot: p as Joint["pivot"],
+        axis: a.map((v) => r4(v / len)) as Joint["axis"],
+        lower: j.lower,
+        upper: j.upper,
+      };
+    });
+  await target.transform(unpartition());
+  return { glb: Buffer.from(await io.writeBinary(target)), joints: out, links: meshLinks.map((l) => l.name) };
 }
 
 /** Bounding box (Y-up metres) and triangle count of a raw Lux3D GLB, used to decide on part-split. */

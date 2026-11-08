@@ -7,7 +7,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getJob } from "../src/lib/pipeline/jobs.ts";
+import { getJob, processStored } from "../src/lib/pipeline/jobs.ts";
 import { appendToLibrary, readLibrary } from "../src/lib/pipeline/library.ts";
 import { processModel } from "../src/lib/pipeline/process.ts";
 import { store } from "../src/lib/storage.ts";
@@ -23,27 +23,24 @@ for (const e of lib.items) {
   if (only && !only.includes(e.id) && !only.includes(e.slug)) continue;
   const meta = (await s.getJSON(`objects/${e.id}/meta.json`))?.value;
   if (!meta) continue;
-  let input;
+  let r;
   const job = (await getJob(e.id, s))?.job;
   if (job) {
-    const key = job.kind === "object" ? (job.work.splitKey ?? job.work.genKey) : job.work.finalKey;
-    const g = key && (await s.get(key));
-    if (!g) {
-      console.log(`${e.slug ?? e.id}: raw GLB missing, skipped`);
+    try {
+      r = await processStored(job, s);
+    } catch (err) {
+      console.log(`${e.slug ?? e.id}: ${err.message}, skipped`);
       continue;
     }
-    const whole = job.kind === "object" && job.work.splitKey ? (await s.get(job.work.genKey))?.body : undefined;
-    input = { glb: g.body, split: job.kind === "object" && !!job.work.splitKey, animated: job.kind !== "object", inPlace: job.kind === "pedestrian" ? true : undefined, clipName: job.kind === "pedestrian" ? "Walk_Loop" : undefined, wholeGlb: whole };
   } else if (SEEDS[e.slug] && existsSync(path.join(WEB, SEEDS[e.slug].glb))) {
     const sd = SEEDS[e.slug];
-    input = { glb: readFileSync(path.join(WEB, sd.glb)), split: sd.split, wholeGlb: sd.whole ? readFileSync(path.join(WEB, sd.whole)) : undefined };
+    r = await processModel({ glb: readFileSync(path.join(WEB, sd.glb)), split: sd.split, wholeGlb: sd.whole ? readFileSync(path.join(WEB, sd.whole)) : undefined });
+    await s.put(`objects/${e.id}/visual.glb`, r.visual, { contentType: "model/gltf-binary" });
+    await s.put(`objects/${e.id}/parts.json`, r.partsJson, { contentType: "application/json" });
   } else {
     console.log(`${e.slug ?? e.id}: no source, skipped`);
     continue;
   }
-  const r = await processModel(input);
-  await s.put(`objects/${e.id}/visual.glb`, r.visual, { contentType: "model/gltf-binary" });
-  await s.put(`objects/${e.id}/parts.json`, r.partsJson, { contentType: "application/json" });
   const b = r.parts.bbox;
   const next = {
     ...meta,
@@ -51,6 +48,7 @@ for (const e of lib.items) {
     size: [0, 1, 2].map((k) => Math.round((b.max[k] - b.min[k]) * 1000) / 1000),
     parts: r.parts.parts.length,
     volume: r.parts.volume,
+    joints: r.parts.joints?.length,
     tris: r.stats.tris,
     bytes: { visual: r.stats.visualBytes, parts: r.stats.partsBytes },
   };

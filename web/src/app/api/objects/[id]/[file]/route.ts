@@ -9,6 +9,7 @@ const FILES: Record<string, { key: (id: string) => string; type: string }> = {
   "visual.glb": { key: (id) => `objects/${id}/visual.glb`, type: "model/gltf-binary" },
   "parts.json": { key: (id) => `objects/${id}/parts.json`, type: "application/json" },
   "meta.json": { key: (id) => `objects/${id}/meta.json`, type: "application/json" },
+  "urdf.zip": { key: (id) => `objects/${id}/urdf.zip`, type: "application/zip" },
   "input.jpg": { key: (id) => `inputs/${id}.jpg`, type: "image/jpeg" },
   "thumb.webp": { key: (id) => `objects/${id}/thumb.webp`, type: "image/webp" },
 };

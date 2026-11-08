@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { isPreconditionFailed, store as defaultStore, updateJSON, type Store } from "../storage";
 import { AholoClient, AholoError, creditsFor, downloadOutput, humanError, isConcurrencyError, type CreateRequest, type Style, type Task, type Version } from "./aholo";
 import { config, newId, TYPICAL_SECONDS } from "./config";
-import { measureGlb, processModel } from "./process";
+import { articulatedToGlb, isZip, measureGlb, processModel, type ProcessResult } from "./process";
 import { appendToLibrary, type ObjectMeta } from "./library";
 
 /**
@@ -108,6 +108,7 @@ export type Job = {
     outputs?: Partial<Record<StageName, string[]>>;
     process?: Record<string, number>;
     clip?: { name: string; duration: number };
+    joints?: number;
   };
   lease?: { token: string; until: number };
   ipHash?: string;
@@ -703,21 +704,10 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
         },
       );
     case "process": {
-      const key = job.kind === "object" ? (job.work.splitKey ?? job.work.genKey!) : job.work.finalKey!;
-      const g = await s.get(key);
-      if (!g) throw new Error("A stored model file is missing.");
-      const r = await processModel({
-        glb: g.body,
-        split: job.kind === "object" && !!job.work.splitKey,
-        wholeGlb: job.kind === "object" && job.work.splitKey ? (await s.get(job.work.genKey!))?.body : undefined,
-        animated: job.kind !== "object",
-        inPlace: job.kind === "pedestrian" ? true : undefined,
-        clipName: job.kind === "pedestrian" ? "Walk_Loop" : undefined,
-      });
-      await s.put(`objects/${id}/visual.glb`, r.visual, { contentType: "model/gltf-binary" });
-      await s.put(`objects/${id}/parts.json`, r.partsJson, { contentType: "application/json" });
+      const r = await processStored(job, s);
       const clip = r.parts.animated?.clips[0];
       if (clip) job.work.clip = clip;
+      job.work.joints = r.parts.joints?.length;
       job.work.process = { ...r.stats, volume: r.parts.volume, bboxMinX: r.parts.bbox.min[0], bboxMinY: r.parts.bbox.min[1], bboxMinZ: r.parts.bbox.min[2], bboxMaxX: r.parts.bbox.max[0], bboxMaxY: r.parts.bbox.max[1], bboxMaxZ: r.parts.bbox.max[2] };
       st.status = "done";
       st.endedAt = deps.now();
@@ -750,7 +740,9 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
         createdAt: deps.now(),
         credits: job.work.credits,
         lux3dTasks: job.work.tasks as Record<string, string>,
-        animated: job.kind === "object" ? undefined : { clip: job.work.clip?.name ?? (job.kind === "pedestrian" ? "Walk_Loop" : "articulation"), inPlace: job.kind === "pedestrian" ? true : undefined, duration: job.work.clip?.duration },
+        joints: job.work.joints,
+        urdf: job.kind === "articulated" && !!job.work.joints ? true : undefined,
+        animated: job.kind !== "pedestrian" ? undefined : { clip: job.work.clip?.name ?? (job.kind === "pedestrian" ? "Walk_Loop" : "articulation"), inPlace: job.kind === "pedestrian" ? true : undefined, duration: job.work.clip?.duration },
       };
       await s.putJSON(`objects/${id}/meta.json`, meta);
       await appendToLibrary(meta, s);
@@ -813,6 +805,39 @@ export async function startExport(objectId: string, format: ExportFormat, deps: 
   const job = await createJob({ kind: "export", source: "library", input: { objectId, format, sourceKey } }, deps);
   await s.putJSON(pointer, { jobId: job.id }, { ifGenerationMatch: prev ? prev.generation : "0" }).catch(() => undefined);
   return { jobId: job.id, existing: false };
+}
+
+/**
+ * Builds visual.glb + parts.json for a job from its stored raw files and writes them (also used by
+ * scripts/library-reprocess.mjs). Articulated objects arrive as a URDF zip: links become parts, joints go
+ * into parts.json, and the package itself is kept as objects/{id}/urdf.zip.
+ */
+export async function processStored(job: Pick<Job, "id" | "kind" | "work">, s: Store): Promise<ProcessResult> {
+  const id = job.id;
+  const key = job.kind === "object" ? (job.work.splitKey ?? job.work.genKey!) : job.work.finalKey!;
+  const g = await s.get(key);
+  if (!g) throw new Error("A stored model file is missing.");
+  let r: ProcessResult;
+  if (job.kind === "articulated" && isZip(g.body)) {
+    const a = await articulatedToGlb(g.body);
+    r = await processModel({ glb: a.glb, split: true, wholeGlb: job.work.genKey ? (await s.get(job.work.genKey))?.body : undefined });
+    r.parts.joints = a.joints;
+    r.partsJson = JSON.stringify(r.parts);
+    r.stats.partsBytes = Buffer.byteLength(r.partsJson);
+    await s.put(`objects/${id}/urdf.zip`, g.body, { contentType: "application/zip" });
+  } else {
+    r = await processModel({
+      glb: g.body,
+      split: job.kind === "object" && !!job.work.splitKey,
+      wholeGlb: job.kind === "object" && job.work.splitKey ? (await s.get(job.work.genKey!))?.body : undefined,
+      animated: job.kind !== "object",
+      inPlace: job.kind === "pedestrian" ? true : undefined,
+      clipName: job.kind === "pedestrian" ? "Walk_Loop" : undefined,
+    });
+  }
+  await s.put(`objects/${id}/visual.glb`, r.visual, { contentType: "model/gltf-binary" });
+  await s.put(`objects/${id}/parts.json`, r.partsJson, { contentType: "application/json" });
+  return r;
 }
 
 export function displayName(job: Pick<Job, "input" | "source">): string {
