@@ -3,8 +3,9 @@
 import { zipSync, strToU8 } from "fflate";
 import { toMJCF } from "@/sim/assets";
 import { getPhysics, objectUrl, type LibraryEntry } from "./api";
+import { defaultDensity } from "@/lib/density";
 
-export async function buildPack(e: LibraryEntry, density = 400) {
+export async function buildPack(e: LibraryEntry, density = defaultDensity(e)) {
   const [phys, visual, meta] = await Promise.all([
     getPhysics(e.id),
     fetch(objectUrl(e.id, "visual.glb")).then((r) => r.arrayBuffer()),
@@ -17,16 +18,19 @@ export async function buildPack(e: LibraryEntry, density = 400) {
 Made with Aholo Lux3D in Proving Ground.
 
 visual.glb   textured mesh, metres, Y-up (glTF convention)
-object.xml   MuJoCo model: a free body with ${parts.length} convex mesh geoms, ${mj.mass.toFixed(2)} kg total
-             (density ${density} kg/m^3 over the closed mesh volume), Z-up. Load it with mujoco.MjModel.from_xml_path.
+object.xml   MuJoCo include: a free body with ${parts.length} convex mesh geoms, ${mj.mass.toFixed(2)} kg total
+             (density ${density} kg/m^3 over the closed mesh volume), Z-up, no floor. Add it to your own
+             scene with <include file="object.xml"/>.
+scene.xml    a floor plus the object: mujoco.MjModel.from_xml_path("scene.xml")
 meshes/      one convex hull per Lux3D part, binary STL, metres, Z-up
 meta.json    size, source and Lux3D task ids
 
-Size: ${e.size.map((s) => (s * 100).toFixed(0)).join(" x ")} cm (x, height, z)
+Size: ${(e.size[0] * 100).toFixed(0)} x ${(e.size[2] * 100).toFixed(0)} x ${(e.size[1] * 100).toFixed(0)} cm (width x depth x height, as on the site)
 `;
   const files: Record<string, Uint8Array> = {
     "visual.glb": new Uint8Array(visual),
     "object.xml": strToU8(mj.xml),
+    "scene.xml": strToU8(mj.scene),
     "meta.json": strToU8(meta),
     "README.txt": strToU8(readme),
   };

@@ -17,7 +17,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://proving-ground.vercel.app"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://proving-ground-snowy.vercel.app"),
   title: {
     default: "Proving Ground: make anything, watch a real robot deal with it",
     template: "%s · Proving Ground",

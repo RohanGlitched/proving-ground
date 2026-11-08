@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { AholoClient } from "../../src/lib/pipeline/aholo.ts";
 
 // Opt-in: LIVE_LUX=1 (needs AHOLO_API_KEY). Costs nothing: reads the balance and uploads a tiny image
-// through Asset/OUS. LIVE_LUX_GENERATE=1 also runs one image-to-3D Turbo task (1 credit, ~80 s).
+// through Asset/OUS. LIVE_LUX_GENERATE=1 also runs one image-to-3D Turbo task (1 credit, ~90 s).
 const live = process.env.LIVE_LUX === "1" && !!process.env.AHOLO_API_KEY;
 
 test("live: balance and an OUS upload", { skip: !live && "set LIVE_LUX=1" }, async () => {

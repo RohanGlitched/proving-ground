@@ -29,7 +29,7 @@ export function LibraryShelf() {
           <li key={e.id}>
             <Link href={`/arena?add=${e.id}`} className="sheet group block overflow-hidden transition-transform hover:-translate-y-0.5" title={`Test ${e.name} in the arena`}>
               <div className="relative">
-                <Thumb id={e.id} alt={e.name} className="aspect-square" />
+                <Thumb id={e.id} alt={e.name} size={e.size} eager className="aspect-square" />
                 {trips[e.id] && (
                   <Stamp tone={verdict(trips[e.id]).tone} rotate={-6} className="absolute bottom-2 right-2 bg-paper/85 !px-1.5 !text-[10px]">
                     {verdict(trips[e.id]).label}

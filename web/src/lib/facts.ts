@@ -11,9 +11,9 @@ export const FACTS = [
     detail: "MuJoCo compiled to WebAssembly runs the 500 Hz physics 12 times faster than the clock with one chair, 3–4 times with twenty objects.",
   },
   {
-    value: "~80 s",
+    value: "~90 s",
     label: "Photo to 3D object",
-    detail: "Lux3D Turbo image-to-3D, measured end to end including upload and download. Part-split adds about another 80 s.",
+    detail: "Lux3D Turbo generation, measured on 20+ library jobs (79–105 s). With part-split and processing, a finished object takes about 2 minutes, or 4 with parts.",
   },
   {
     value: "8 parts",

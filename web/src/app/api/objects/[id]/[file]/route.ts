@@ -14,7 +14,8 @@ const FILES: Record<string, { key: (id: string) => string; type: string }> = {
   "thumb.webp": { key: (id) => `objects/${id}/thumb.webp`, type: "image/webp" },
 };
 
-/** GET /api/objects/:id/(visual.glb|parts.json|meta.json|input.jpg): immutable once published. */
+/** GET /api/objects/:id/(visual.glb|parts.json|meta.json|input.jpg|thumb.webp). Files can be reprocessed (size check, thumbnails),
+ * so browsers keep them an hour; the CDN keeps them until the next deploy, which clears its cache. */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string; file: string }> }) {
   try {
     const { id, file } = await ctx.params;
@@ -28,7 +29,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; fi
       headers: {
         "content-type": f.type,
         ...(g.size ? { "content-length": String(g.size) } : {}),
-        "cache-control": "public, max-age=31536000, immutable",
+        "cache-control": "public, max-age=3600, s-maxage=31536000",
         "access-control-allow-origin": "*",
       },
     });

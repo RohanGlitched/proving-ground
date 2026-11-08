@@ -23,7 +23,7 @@ export function create(): ArenaSim {
       } else if (h.simTime < lastT) speed = 0;
       lastP = p;
       lastT = h.simTime;
-      const header: FrameHeader = { t: h.simTime, status: h.status, pelvis: h.robotPelvis, speed, contacts: h.contactCount };
+      const header: FrameHeader = { t: h.simTime, status: h.status, pelvis: h.robotPelvis, speed, contacts: h.contactCount, yielding: h.yielding };
       // poses start right after the header: [robot geoms | objects | movers]
       const layout = { ...f.layout, header: 0 };
       frameCbs.forEach((cb) => cb(f.poses, layout, header));
@@ -47,6 +47,12 @@ export function create(): ArenaSim {
     },
     setCommand(c) {
       sim.setCommand(c);
+    },
+    push(force, angle) {
+      void sim.push(force, angle);
+    },
+    setRate(rate) {
+      void sim.setRate(rate);
     },
     play() {
       sim.play();

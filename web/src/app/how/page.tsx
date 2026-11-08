@@ -131,8 +131,9 @@ export default function HowPage() {
               solids, so the robot&apos;s foot can go between the legs; a single-mesh chair would be one solid block.
             </p>
             <p>
-              Mass is the closed mesh volume times a household density (400 kg/m³ by default, which you can change per object; hull volume would make a chair weigh 18.8 kg instead of 5.2 kg), clamped
-              between 50 g and 80 kg. Every object shows its mass and lets you change it. Friction is 0.8 unless set.
+              Mass is the closed mesh volume times a density (hull volume would make a chair weigh 18.8 kg instead of 5.2 kg), clamped
+              between 50 g and 80 kg. Lux3D meshes are closed, so hollow things get a low effective density: 400 kg/m³ for furniture,
+              75 for a basketball (0.6 kg, like a real one), 2,400 for a rock. Every object shows its mass and lets you change it. Friction is 0.8 unless set.
             </p>
             <Table head={["Object", "Parts", "Size (cm)", "Mass"]} rows={HOW.objectExamples} />
           </Section>
@@ -184,7 +185,7 @@ export default function HowPage() {
             </ul>
             <div className="pt-4">
               <Stamp tone="route" rotate={-2}>
-                Built Nov 9–19, 2026
+                Built for the Aholo hackathon, November 2026
               </Stamp>
             </div>
           </Section>

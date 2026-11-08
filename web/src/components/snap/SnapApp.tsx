@@ -11,6 +11,16 @@ export function SnapApp({ code }: { code: string }) {
   const [job, setJob] = useState<PublicJob | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [room, setRoom] = useState<"checking" | "ok" | "missing">("checking");
+  const [linked, setLinked] = useState(true);
+
+  useEffect(() => {
+    if (!/^[A-Z2-9]{5}$/.test(code)) return setRoom("missing");
+    fetch(`/api/rooms/${code}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((r: { exists?: boolean }) => setRoom(r.exists ? "ok" : "missing"))
+      .catch(() => setRoom("ok")); // network hiccup: let them try; the send step checks again
+  }, [code]);
 
   useEffect(() => {
     if (!file) return setPreview(null);
@@ -26,12 +36,18 @@ export function SnapApp({ code }: { code: string }) {
   }, [job]);
 
   async function send() {
-    if (!file) return;
+    if (!file || room === "missing") return;
     setBusy(true);
     setErr(null);
     try {
+      const chk = await fetch(`/api/rooms/${code}`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({ exists: true }));
+      if (!chk.exists) {
+        setRoom("missing");
+        return;
+      }
       const r = await makeObject({ image: file, label: label.trim() || undefined });
-      await fetch(`/api/rooms/${code}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId: r.jobId }) });
+      const posted = await fetch(`/api/rooms/${code}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId: r.jobId }) }).catch(() => null);
+      setLinked(!!posted?.ok);
       setJob(r.job ?? (await getJob(r.jobId)));
     } catch (e) {
       setErr((e as Error).message);
@@ -47,9 +63,15 @@ export function SnapApp({ code }: { code: string }) {
         <span className="data ml-auto rounded-[6px] bg-ink px-2 py-1 text-[12px] text-white">ROOM {code}</span>
       </div>
       <h1 className="placard-sm mt-8 text-[31px]">Photograph one object</h1>
-      <p className="mt-2 text-[16px] leading-relaxed text-ink-2">Lux3D turns it into a 3D object at its real size. It will drop into the arena on the other screen in about two minutes.</p>
+      <p className="mt-2 text-[16px] leading-relaxed text-ink-2">Lux3D turns it into a 3D object at its real size. It drops into the arena on the other screen in about two minutes.</p>
 
-      {!job && (
+      {room === "missing" && (
+        <div className="sheet mt-6 p-5">
+          <Stamp tone="fault" rotate={-4}>No arena</Stamp>
+          <p className="mt-3 text-[15px]">No arena is open with the code {code}. Open the arena on a computer, choose Make with Lux3D, then Phone, and scan the QR code it shows.</p>
+        </div>
+      )}
+      {!job && room !== "missing" && (
         <>
           <label className="mt-6 block cursor-pointer overflow-hidden rounded-[12px] border-2 border-dashed border-ink/25 bg-paper text-center">
             <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
@@ -84,7 +106,9 @@ export function SnapApp({ code }: { code: string }) {
               <Stamp tone="pass" animate rotate={-5} className="text-[16px]">
                 Delivered
               </Stamp>
-              <p className="mt-4 text-[16px]">Look at the big screen: it is in the arena now.</p>
+              <p className="mt-4 text-[16px]">
+                {linked ? "Look at the big screen: it is in the arena now." : "It is in the shared library, but the arena did not answer. Find it under Library on the big screen."}
+              </p>
               <button onClick={() => { setJob(null); setFile(null); setLabel(""); }} className="mt-5 h-11 w-full rounded-[10px] border border-ink/20 font-semibold">
                 Snap another
               </button>

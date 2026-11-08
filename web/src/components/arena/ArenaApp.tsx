@@ -3,6 +3,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CameraFrame } from "@/components/ui/CameraFrame";
 import { Stamp, Target } from "@/components/ui/marks";
+import { chime, thud, unlockAudio, whoosh } from "@/lib/client/sfx";
+import { defaultDensity } from "@/lib/density";
 import { MakePanel } from "./MakePanel";
 import { tripIndex } from "@/lib/client/trips";
 import { LibraryDrawer, sizeLabel } from "./LibraryDrawer";
@@ -36,6 +38,7 @@ function crossingPath(x: number, phase = 0) {
 type LogLine = { t: number; text: string; tone: "fault" | "pass" | "ink" };
 
 const DEFAULT_GOAL = { x: 4.5, y: 0 };
+const SHOVE_N = 170;
 const DEFAULT_START = { x: 0, y: 0, yaw: 0 };
 // slugs of library objects used for the first course a visitor sees
 const STARTER = ["traffic-cone", "cardboard-box", "kitchen-chair", "car-tire", "basketball"];
@@ -44,8 +47,11 @@ const STARTER = ["traffic-cone", "cardboard-box", "kitchen-chair", "car-tire", "
 function freeSpot(placed: { x: number; y: number; r?: number }[], goal: { x: number; y: number }, start: { x: number; y: number }, r = 0.3) {
   let best = { x: Math.max(1.5, 0.8 + r), y: 0 }, bestScore = -Infinity;
   const x1 = Math.max(1.2, goal.x - 0.6 - r);
+  // near the walking line first; widen to the sides only when nothing there is free
+  for (const span of [0.75, 2.25]) {
+  if (span > 0.75 && bestScore >= 0) break;
   for (let x = 0.8 + r; x <= x1; x += 0.25) {
-    for (let y = -0.75; y <= 0.75; y += 0.25) {
+    for (let y = -span; y <= span; y += 0.25) {
       let d = Math.min(Math.hypot(x - goal.x, y - goal.y) - 0.5 - r, Math.hypot(x - start.x, y - start.y) - 0.8 - r);
       for (const p of placed) d = Math.min(d, Math.hypot(x - p.x, y - p.y) - r - (p.r ?? 0.3));
       const score = Math.min(d, 1.2) - Math.abs(y) * 0.35;
@@ -54,6 +60,7 @@ function freeSpot(placed: { x: number; y: number; r?: number }[], goal: { x: num
         best = { x, y };
       }
     }
+  }
   }
   return best;
 }
@@ -79,7 +86,13 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   const [goal, setGoal] = useState(DEFAULT_GOAL);
   const [start] = useState(DEFAULT_START);
   const [mode, setMode] = useState<Mode>("blind");
+  const modeRef = useRef<Mode>("blind");
+  modeRef.current = mode;
   const [running, setRunning] = useState(false);
+  const runningRef = useRef(false);
+  runningRef.current = running;
+  const [stuck, setStuck] = useState(false);
+  const progress = useRef<{ t: number; x: number; y: number } | null>(null);
   const [status, setStatus] = useState<FrameHeader["status"]>("running");
   const [selected, setSelected] = useState<string | null>(null);
   const [log, setLog] = useState<LogLine[]>([]);
@@ -93,6 +106,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   const [readout, setReadout] = useState({ speed: 0, t: 0, contacts: 0 });
   const sceneVersion = useRef(0);
   const prevStatus = useRef<FrameHeader["status"]>("running");
+  const prevYield = useRef(false);
 
   const byId = useMemo(() => new Map(library.map((e) => [e.id, e])), [library]);
   const byUid = useMemo(() => new Map(placed.map((p) => [p.uid, p])), [placed]);
@@ -117,6 +131,10 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
         view.onSelect = (uid) => setSelected(uid);
         view.onMove = (uid, x, y) => setPlaced((ps) => ps.map((p) => (p.uid === uid ? { ...p, x, y } : p)));
         view.onGoal = (x, y) => setGoal({ x, y });
+        view.onShove = (angle) => {
+          if (!runningRef.current) return;
+          simRef.current?.push(SHOVE_N, angle);
+        };
 
         setBootMsg("Loading the robot and its walking controller");
         const sim = await createArenaSim();
@@ -126,11 +144,13 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
         await view.setRobot(robotVisuals);
         offFrame = sim.onFrame((buf, layout, h) => {
           headerRef.current = h;
+          view.setFocus(h.pelvis);
           view.applyFrame(buf, layout.header, layout.robotGeoms);
         });
         sim.onPush((e) => {
           const h = headerRef.current;
           if (h) view.showPush(h.pelvis, e.angle, e.force);
+          whoosh();
           say(`Shoved with ${e.force.toFixed(0)} N`, "ink");
         });
         const lastSaid = new Map<string, number>();
@@ -171,9 +191,35 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       const h = headerRef.current;
       if (!h) return;
       setReadout({ speed: h.speed, t: h.t, contacts: h.contacts });
+      if (!!h.yielding !== prevYield.current) {
+        prevYield.current = !!h.yielding;
+        if (h.yielding) say("Waiting for someone to cross the path", "ink");
+      }
+      // stuck: running, but less than 15 cm of progress in 5 s of sim time (leaning on a bench, say)
+      if (h.status === "running" && runningRef.current && modeRef.current !== "manual") {
+        const pr = progress.current;
+        if (!pr || h.t < pr.t || Math.hypot(h.pelvis[0] - pr.x, h.pelvis[1] - pr.y) > 0.15) progress.current = { t: h.t, x: h.pelvis[0], y: h.pelvis[1] };
+        else if (h.t - pr.t > 5) {
+          progress.current = null;
+          simRef.current?.pause();
+          setRunning(false);
+          setStuck(true);
+          say(`Stuck at ${h.t.toFixed(1)} s: no progress for 5 s`, "fault");
+        }
+      }
       if (prevStatus.current !== h.status) {
-        if (h.status === "fell") say(`Fell at ${h.t.toFixed(2)} s`, "fault");
-        if (h.status === "goal") say(`Reached the goal in ${h.t.toFixed(2)} s`, "pass");
+        if (h.status === "fell") {
+          say(`Fell at ${h.t.toFixed(2)} s`, "fault");
+          // the fall in slow motion, with a camera punch and a thud
+          viewRef.current?.impact();
+          thud();
+          simRef.current?.setRate(0.3);
+          setTimeout(() => simRef.current?.setRate(1), 1500);
+        }
+        if (h.status === "goal") {
+          say(`Reached the goal in ${h.t.toFixed(2)} s`, "pass");
+          chime();
+        }
         prevStatus.current = h.status;
         setStatus(h.status);
       }
@@ -183,9 +229,10 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
 
   // ---- first course: a saved one, or a starter set from the library ----
   const seeded = useRef(false);
+  const [courseFailed, setCourseFailed] = useState(false);
   useEffect(() => {
     if (seeded.current || boot !== "ready") return;
-    if (courseId) {
+    if (courseId && !courseFailed) {
       seeded.current = true;
       loadCourse(courseId)
         .then(({ course, stats }) => {
@@ -198,7 +245,13 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
           setPlaced(course.objects.map((o) => ({ uid: newUid(), objectId: o.objectId, name: o.name, x: o.x, y: o.y, yaw: o.yaw, density: o.density, kind: o.kind })));
           say(`Loaded "${course.title}"`);
         })
-        .catch(() => say("That course could not be loaded. Starting an empty one.", "fault"));
+        .catch(() => {
+          say("That course link does not exist (or was removed). Here is the starter course instead.", "fault");
+          seeded.current = false;
+          courseIdSaved.current = null;
+          sigPending.current = false;
+          setCourseFailed(true);
+        });
       return;
     }
     if (libLoading) return;
@@ -215,7 +268,8 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       const ranked = objects.filter((e) => radiusOf(e) < 0.6).sort((a, b) => score(b) - score(a));
       const pick = STARTER.map((s) => library.find((e) => e.slug === s)).filter(Boolean) as LibraryEntry[];
       let chosen = (ranked.length >= 2 ? ranked : pick).slice(0, 2);
-      const extra = addId ? library.find((e) => e.id === addId) : undefined;
+      const added = addId ? library.find((e) => e.id === addId) : undefined;
+      const extra = added && added.kind !== "pedestrian" ? added : undefined;
       if (extra) chosen = [extra, ...chosen.filter((e) => e.id !== extra.id)].slice(0, 2);
       const r0 = radiusOf(chosen[0]), r1 = radiusOf(chosen[1]);
       const x0 = Math.max(1.35, 0.8 + r0);
@@ -224,11 +278,11 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
         { x: Math.min(DEFAULT_GOAL.x - 0.7 - r1, Math.max(2.75, x0 + r0 + r1 + 0.6)), y: -0.08, yaw: 1.2 },
       ];
       const next: Placed[] = chosen.map((e, i) => ({ uid: newUid(), objectId: e.id, name: e.name, ...spots[i] }));
-      const walker = library.find((e) => e.kind === "pedestrian");
+      const walker = added?.kind === "pedestrian" ? added : library.find((e) => e.kind === "pedestrian");
       if (walker && !extra) next.push({ uid: newUid(), objectId: walker.id, name: walker.name, kind: "mover", x: 2.1, y: 0, yaw: 0 });
       setPlaced(next);
     });
-  }, [boot, courseId, libLoading, library, say, addId]);
+  }, [boot, courseId, courseFailed, libLoading, library, say, addId]);
 
   // ---- keep the view and the physics scene in sync with placements ----
   const physics = useCallback((objectId: string) => getPhysics(objectId), []);
@@ -244,7 +298,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       const objs = await Promise.all(
         things.map(async (p) => {
           const ph = await physics(p.objectId);
-          const density = p.density ?? 400;
+          const density = p.density ?? defaultDensity(byId.get(p.objectId));
           // mass from the closed mesh volume when known (hull volume overstates hollow shapes)
           return { id: p.uid, name: p.name, parts: ph.parts, x: p.x, y: p.y, yaw: p.yaw, density, mass: ph.volume ? ph.volume * density : undefined };
         }),
@@ -287,11 +341,27 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     viewRef.current?.setGoal(goal.x, goal.y);
   }, [goal]);
 
-  // results belong to the course they were run on: any edit clears them
+  // results belong to the course they were run on: any edit clears them, and an edited shared course
+  // is a new course (its results must not be posted to the original)
+  const savedSig = useRef<string | null>(null);
+  const sigPending = useRef(!!courseId);
   useEffect(() => {
     setTrials(null);
     viewRef.current?.clearTrials();
+    const sig = JSON.stringify([placed.map((p) => [p.objectId, +p.x.toFixed(3), +p.y.toFixed(3), +p.yaw.toFixed(3), p.density ?? null, p.kind ?? null]), goal, mode, pushes]);
+    if (sigPending.current && placed.length) {
+      sigPending.current = false;
+      savedSig.current = sig;
+    } else if (savedSig.current !== null && sig !== savedSig.current) {
+      courseIdSaved.current = null;
+      savedSig.current = null;
+    }
   }, [placed, goal, mode, pushes]);
+
+  // steer mode: the camera rides along with the robot
+  useEffect(() => {
+    if (viewRef.current) viewRef.current.chase = mode === "manual";
+  }, [mode, boot]);
 
   // ---- manual steering ----
   useEffect(() => {
@@ -304,7 +374,9 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     };
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === "INPUT") return;
-      keys.add(e.key.toLowerCase());
+      const k = e.key.toLowerCase();
+      keys.add(k);
+      if (!runningRef.current && ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) actions.current.play();
       send();
     };
     const up = (e: KeyboardEvent) => {
@@ -352,7 +424,11 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   function play() {
     const sim = simRef.current;
     if (!sim) return;
-    if (status !== "running") sim.reset();
+    unlockAudio();
+    if (status !== "running" || stuck) sim.reset();
+    setStuck(false);
+    progress.current = null;
+    sim.setRate(1);
     sim.setMode(mode);
     sim.play();
     setRunning(true);
@@ -367,6 +443,8 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     simRef.current?.reset();
     simRef.current?.pause();
     setRunning(false);
+    setStuck(false);
+    progress.current = null;
     setStatus("running");
     prevStatus.current = "running";
     setLog([]);
@@ -381,7 +459,16 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     viewRef.current?.clearTrials();
     const seed = Math.floor(Math.random() * 1e6);
     try {
-      const summary = await sim.runTrials({ n: 10, seed, mode, pushes: pushes ? { count: 1, force: 170 } : null, maxSeconds: 20 }, (done) => setTrialProgress(done));
+      // draw each run's trail the moment it finishes
+      const sofar: NonNullable<typeof trials>["trials"] = [];
+      const summary = await sim.runTrials({ n: 10, seed, mode, pushes: pushes ? { count: 1, force: SHOVE_N } : null, maxSeconds: 20 }, (done, last) => {
+        setTrialProgress(done);
+        if (last) {
+          sofar.push(last);
+          viewRef.current?.showTrials(sofar);
+          if (last.result === "fell") thud(0.45);
+        }
+      });
       setTrials(summary);
       viewRef.current?.showTrials(summary.trials);
       say(`10 runs: ${Math.round(summary.passRate * 100)}% reached the goal`, summary.passRate >= 0.5 ? "pass" : "fault");
@@ -434,6 +521,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     try {
       const { id } = await saveCourse(doc);
       courseIdSaved.current = id;
+      savedSig.current = JSON.stringify([placed.map((p) => [p.objectId, +p.x.toFixed(3), +p.y.toFixed(3), +p.yaw.toFixed(3), p.density ?? null, p.kind ?? null]), goal, mode, pushes]);
       const url = `${location.origin}/c/${id}`;
       await navigator.clipboard?.writeText(url).catch(() => {});
       setToast(`Saved. Link copied: ${url.replace(/^https?:\/\//, "")}`);
@@ -472,6 +560,10 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     status === "fell" ? (
       <Stamp tone="fault" animate rotate={-7} onDark className="text-[17px] !px-3 !py-1">
         Fell
+      </Stamp>
+    ) : stuck ? (
+      <Stamp tone="fault" animate rotate={-6} onDark className="text-[17px] !px-3 !py-1">
+        Stuck
       </Stamp>
     ) : status === "goal" ? (
       <Stamp tone="pass" animate rotate={-5} onDark className="text-[17px] !px-3 !py-1">
@@ -518,9 +610,11 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
             </button>
           ))}
         </div>
-        <button onClick={() => share()} disabled={!placed.length} className="hidden h-9 rounded-[10px] border border-ink/15 px-3 text-[14px] font-semibold hover:bg-ink/5 disabled:opacity-40 sm:block">
-          Save and share
+        <button onClick={() => share()} disabled={!placed.length} className="h-9 shrink-0 rounded-[10px] border border-ink/15 px-2.5 text-[14px] font-semibold hover:bg-ink/5 disabled:opacity-40 sm:px-3">
+          <span className="sm:hidden">Share</span>
+          <span className="hidden sm:inline">Save and share</span>
         </button>
+        <h1 className="sr-only">{courseId ? `Shared course: ${title}` : "Proving Ground arena"}</h1>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
@@ -584,6 +678,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
                     style={{ gridColumn: b.col, gridRow: b.row }}
                     onPointerDown={(e) => {
                       e.currentTarget.setPointerCapture(e.pointerId);
+                      if (!runningRef.current) play();
                       steer.current = b.v;
                       sendSteer();
                     }}
@@ -600,6 +695,11 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
                     {b.glyph}
                   </button>
                 ))}
+              </div>
+            )}
+            {mode === "manual" && !running && boot === "ready" && (
+              <div className="pointer-events-none absolute inset-x-0 top-1/3 mx-auto w-fit rounded-[8px] bg-black/65 px-4 py-2 text-center text-[13.5px] text-white">
+                Press W or hold the arrow pad to walk. A and D turn.
               </div>
             )}
             {trialProgress != null && (
@@ -621,15 +721,25 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
               <button onClick={reset} disabled={boot !== "ready"} className="h-11 rounded-[10px] border border-white/25 bg-black/40 px-4 font-semibold text-white disabled:opacity-50">
                 Reset
               </button>
+              {running && status === "running" && (
+                <button
+                  onClick={() => simRef.current?.push(SHOVE_N, Math.random() * Math.PI * 2)}
+                  title="Shove it from a random side, or click the robot to shove it from that side"
+                  className="h-11 rounded-[10px] border border-fault/60 bg-fault/85 px-4 font-semibold text-white"
+                >
+                  Shove
+                </button>
+              )}
+              {mode !== "manual" && (
               <button
                 onClick={runTrials}
-                disabled={boot !== "ready" || mode === "manual" || trialProgress != null || !placed.length}
-                title={mode === "manual" ? "Trials need Blind walk or Planner mode" : undefined}
+                disabled={boot !== "ready" || trialProgress != null || !placed.length}
                 className="h-11 whitespace-nowrap rounded-[10px] border border-white/25 bg-black/40 px-3 font-semibold text-white disabled:opacity-50 sm:px-4"
               >
                 <span className="sm:hidden">10 trials</span>
                 <span className="hidden sm:inline">Run 10 trials</span>
               </button>
+              )}
             </div>
           </CameraFrame>
         </div>
@@ -688,9 +798,9 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
                 <label className="mt-3 block text-[13px]">
                   <span className="flex justify-between text-ink-3">
                     <span>Density</span>
-                    <span className="tnum text-ink">{sel.density ?? 400} kg/m³</span>
+                    <span className="tnum text-ink">{sel.density ?? defaultDensity(byId.get(sel.objectId))} kg/m³</span>
                   </span>
-                  <input type="range" min={60} max={2400} step={20} value={sel.density ?? 400} onChange={(e) => updateSel({ density: +e.target.value })} className="mt-1 w-full accent-[#141517]" />
+                  <input type="range" min={60} max={2400} step={20} value={sel.density ?? defaultDensity(byId.get(sel.objectId))} onChange={(e) => updateSel({ density: +e.target.value })} className="mt-1 w-full accent-[#141517]" />
                   <span className="text-[11.5px] text-ink-3">Foam 60 · wood 600 · water 1000 · rock 2400</span>
                 </label>
                 <div className="mt-3 flex gap-2">

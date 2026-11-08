@@ -32,8 +32,8 @@ export default function Home() {
               splits it into the pieces it is made of, and each piece becomes a solid with mass. Then it lands in front of a Unitree G1.
             </p>
             <p>
-              The robot runs Unitree&apos;s published walking controller: the same neural network that drives the real G1, here running in your
-              browser on MuJoCo physics. It was never trained on your shoe. You find out what happens.
+              The robot runs the G1 walking policy Unitree published in unitree_rl_gym, the network their sim-to-real example deploys on the
+              physical robot, here running in your browser on MuJoCo physics. It was never trained on your shoe. You find out what happens.
             </p>
             <div className="flex flex-wrap gap-3 pt-2">
               <Link href="/arena?make=1" className="inline-flex h-11 items-center rounded-[10px] bg-target px-5 font-semibold shadow-[inset_0_-2px_0_rgba(0,0,0,0.18)]">
@@ -93,8 +93,8 @@ export default function Home() {
             </Link>
           </div>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.7] text-ink-2">
-            Courses people built from their own things, ranked by how often the robot fails them. Remix one, beat it with the planner, or make it
-            meaner.
+            Courses built from Lux3D objects, ranked by how often the robot fails them: a seeded set to start, plus everything people save.
+            Remix one, beat it with the planner, or make it meaner.
           </p>
           <GauntletPreview />
         </section>
@@ -123,7 +123,7 @@ export default function Home() {
                   For robotics teams
                 </Stamp>
               </div>
-              <h2 className="placard-sm mt-6 text-[25px] sm:text-[31px]">Test objects in 90 seconds instead of an afternoon in Blender.</h2>
+              <h2 className="placard-sm mt-6 text-[25px] sm:text-[31px]">Test a new object in about four minutes instead of an afternoon in Blender.</h2>
               <p className="mt-4 text-[16px] leading-[1.7] text-ink-2">
                 Walking and grasping policies fail on the things nobody modelled. Every object here downloads as a pack your simulator can load
                 directly: the textured mesh, one convex hull per part, the masses, and an MJCF snippet you can include in a MuJoCo scene.
@@ -155,8 +155,8 @@ export default function Home() {
               parts from part-split means a closer fit.
             </li>
             <li>
-              <strong className="text-ink">Masses are estimates.</strong> Lux3D predicts size, not weight. Mass is the mesh volume times a household
-              density of 400 kg/m³, shown on every object so you can change it.
+              <strong className="text-ink">Masses are estimates.</strong> Lux3D predicts size, not weight. Mass is the mesh volume times a density
+              for that kind of thing (400 kg/m³ for furniture, 75 for a hollow ball), shown on every object so you can change it.
             </li>
             <li>
               <strong className="text-ink">One generation at a time.</strong> Lux3D runs one task per account, so new objects queue. The library is

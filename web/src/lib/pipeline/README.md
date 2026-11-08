@@ -91,7 +91,7 @@ G1 instead of Turbo costs 20 for either generator. Multi-format export is 1.
 
 ## Measured (Nov 9 2026)
 
-- Turbo generation ≈ 80 s; part-split ≈ 80 s; OUS upload of a 7 MB GLB a few seconds.
+- Turbo generation ≈ 90 s (79–105 s measured); part-split ≈ 95 s; OUS upload of a 7 MB GLB a few seconds.
 - Processing: chair (8 parts, 18k tris, 7.3 MB) → 395 KB visual + 23 KB parts in 0.7 s; sneaker (305k tris,
   19 MB) → 751 KB, 24k tris in 1.8 s.
 - See scripts/library-log.json for per-item stage timings, sizes and the measured credit change.

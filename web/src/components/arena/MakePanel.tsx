@@ -187,7 +187,7 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
         {reason && !busy && <p className="mt-2 text-[12.5px] text-ink-3">{reason}</p>}
         {!job && queue && (
           <p className="mt-2 text-[12.5px] text-ink-3">
-            Free · about {mode === "text" ? "2" : "2–3"} min with part-split ·{" "}
+            Free · about 4 min with part-split, and you can keep playing while it builds ·{" "}
             {queue.queueLength ? `${queue.queueLength} ahead of you in the Lux3D queue` : "the Lux3D queue is empty"}
             {queue.dailyRemaining != null ? ` · ${queue.dailyRemaining} makes left today` : ""}
           </p>

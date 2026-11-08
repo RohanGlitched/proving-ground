@@ -7,7 +7,7 @@ import { dailyRemaining } from "@/lib/pipeline/limits";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** GET /api/status → { queueLength, activeJob, credits, dailyRemaining, paused, accepting } */
+/** GET /api/status → { queueLength, activeJob, dailyRemaining, paused, accepting } (the credit balance stays server-side) */
 export async function GET() {
   try {
     const s = store();
@@ -23,7 +23,7 @@ export async function GET() {
     }
     const lowCredits = credits !== null && credits < config.minCredits;
     return json(
-      { queueLength: q.items.length, activeJob, credits, dailyRemaining: remaining, paused: config.paused, accepting: !config.paused && !lowCredits && remaining > 0 },
+      { queueLength: q.items.length, activeJob, dailyRemaining: remaining, paused: config.paused, accepting: !config.paused && !lowCredits && remaining > 0 },
       200,
       { "cache-control": "public, max-age=5, s-maxage=5" },
     );

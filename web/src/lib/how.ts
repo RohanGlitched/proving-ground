@@ -3,9 +3,9 @@
 export const HOW = {
   lux3dSteps: [
     ["Upload the photo or GLB", "Asset upload (OUS)", "0", "1–3 s"],
-    ["Photo to 3D (fast)", "img-to-3d, G1-Turbo", "1", "~80 s"],
-    ["Sentence to 3D (fast)", "text-to-3d, G1-Turbo", "13", "~80 s"],
-    ["Split into parts", "part-split", "30", "~80 s"],
+    ["Photo to 3D (fast)", "img-to-3d, G1-Turbo", "1", "~90 s"],
+    ["Sentence to 3D (fast)", "text-to-3d, G1-Turbo", "13", "~90 s"],
+    ["Split into parts", "part-split", "30", "~95 s"],
     ["Rig a person", "animations/rig", "15", "~63 s"],
     ["Make them walk", "animations/retarget, Walk_Loop", "6", "~120 s"],
     ["Higher-detail model (G1)", "img/text-to-3d, G1", "20", "~290 s"],
@@ -22,7 +22,7 @@ export const HOW = {
   ] as (string | number)[][],
   objectExamples: [
     ["Kitchen chair (text)", "8", "48 × 45 × 85", "5.2 kg (hull volume would say 18.8 kg)"],
-    ["Canvas sneaker (photo)", "1", "28 × 28 × 11", "volume × density"],
+    ["Canvas sneaker (photo)", "1", "28 × 28 × 11", "0.55 kg at 400 kg/m³"],
   ] as (string | number)[][],
   trialExamples: [
     ["Kitchen chair 1.5 m ahead", "10/10 (shoves it aside)", "10/10 (no contact)"],
@@ -35,7 +35,7 @@ export const HOW = {
     "The controller is blind. It reacts to what it feels in its joints; it never sees the objects. Planner mode adds a map, not vision.",
     "Collision uses each part's convex hull. Hollow or concave parts (a bowl, a basket) collide as filled shapes.",
     "Mass comes from the closed mesh volume and a density you can change. Lux3D predicts size, not weight.",
-    "The 12-joint model has fixed arms. The real G1 swings its arms; this one cannot catch itself with them.",
+    "The arms are welded in the elbows-forward pose of Unitree's 12-joint training model, the model the policy was trained on. Changing them would change the physics the policy expects, so they stay; the real G1 swings its arms, this one cannot catch itself with them.",
     "Lux3D allows one generation at a time per account, so new objects can queue for a few minutes when the site is busy.",
     "Movers (walking people, swinging doors) are kinematic: they push the robot but nothing pushes them back.",
   ],

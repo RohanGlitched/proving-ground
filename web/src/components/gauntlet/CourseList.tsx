@@ -24,7 +24,7 @@ export function CourseList({ limit, compact = false }: { limit?: number; compact
       {!compact && (
         <div className="mb-6 flex gap-1 rounded-[10px] bg-ink/[0.06] p-1 text-[14px] font-semibold sm:w-fit">
           {(["hardest", "new"] as const).map((s) => (
-            <button key={s} onClick={() => setSort(s)} className={`h-9 flex-1 rounded-[8px] px-4 ${sort === s ? "bg-paper shadow-sm" : "text-ink-3"}`}>
+            <button key={s} onClick={() => setSort(s)} className={`h-9 flex-1 whitespace-nowrap rounded-[8px] px-4 ${sort === s ? "bg-paper shadow-sm" : "text-ink-3"}`}>
               {s === "hardest" ? "Hardest first" : "Newest first"}
             </button>
           ))}

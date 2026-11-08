@@ -432,12 +432,628 @@
     },
     "toolbox": {
       "jobId": "yiaspu19x2",
-      "status": "running",
+      "status": "done",
       "startedAt": "2026-11-08T21:19:29.186Z",
       "balanceBefore": 3000,
+      "version": "G1-Turbo",
+      "objectId": "yiaspu19x2",
+      "credits": 13,
+      "balanceAfter": 2987,
+      "measuredCredits": 13,
+      "seconds": 116,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 88,
+        "fetch-result": 5,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 8,
+        "publish": 2
+      },
+      "process": {
+        "parts": 1,
+        "tris": 20418,
+        "visualKB": 477,
+        "partsKB": 4
+      },
+      "finishedAt": "2026-11-08T21:21:24.939Z"
+    },
+    "watermelon": {
+      "jobId": "2nqwr8gn8a",
+      "status": "done",
+      "startedAt": "2026-11-08T21:21:29.125Z",
+      "balanceBefore": 2987,
+      "version": "G1-Turbo",
+      "objectId": "2nqwr8gn8a",
+      "credits": 13,
+      "balanceAfter": 2974,
+      "measuredCredits": 13,
+      "seconds": 124,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 95,
+        "fetch-result": 6,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 5,
+        "publish": 2
+      },
+      "process": {
+        "parts": 1,
+        "tris": 18068,
+        "visualKB": 358,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T21:23:32.978Z"
+    },
+    "stack-of-books": {
+      "jobId": "p814wf7qr4",
+      "status": "done",
+      "startedAt": "2026-11-08T21:23:36.056Z",
+      "balanceBefore": 2974,
+      "version": "G1-Turbo",
+      "objectId": "p814wf7qr4",
+      "credits": 43,
+      "balanceAfter": 2931,
+      "measuredCredits": 43,
+      "seconds": 261,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 105,
+        "fetch-result": 5,
+        "upload-for-split": 8,
+        "part-split": 112,
+        "process": 13,
+        "publish": 3
+      },
+      "process": {
+        "parts": 6,
+        "tris": 18098,
+        "visualKB": 453,
+        "partsKB": 31
+      },
+      "finishedAt": "2026-11-08T21:27:57.171Z"
+    },
+    "bar-stool": {
+      "jobId": "0119idlp55",
+      "status": "done",
+      "startedAt": "2026-11-08T21:27:59.994Z",
+      "balanceBefore": 2931,
+      "version": "G1-Turbo",
+      "objectId": "0119idlp55",
+      "credits": 43,
+      "balanceAfter": 2888,
+      "measuredCredits": 43,
+      "seconds": 215,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 87,
+        "fetch-result": 5,
+        "upload-for-split": 7,
+        "part-split": 87,
+        "process": 11,
+        "publish": 3
+      },
+      "process": {
+        "parts": 5,
+        "tris": 18016,
+        "visualKB": 341,
+        "partsKB": 24
+      },
+      "finishedAt": "2026-11-08T21:31:35.326Z"
+    },
+    "floor-lamp": {
+      "jobId": "sj994t8j1f",
+      "status": "done",
+      "startedAt": "2026-11-08T21:31:38.165Z",
+      "balanceBefore": 2888,
+      "version": "G1-Turbo",
+      "objectId": "sj994t8j1f",
+      "credits": 43,
+      "balanceAfter": 2845,
+      "measuredCredits": 43,
+      "seconds": 237,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 83,
+        "fetch-result": 5,
+        "upload-for-split": 7,
+        "part-split": 112,
+        "process": 12,
+        "publish": 3
+      },
+      "process": {
+        "parts": 8,
+        "tris": 24243,
+        "visualKB": 543,
+        "partsKB": 33
+      },
+      "finishedAt": "2026-11-08T21:35:34.835Z"
+    },
+    "side-table": {
+      "jobId": "1a5qd71pru",
+      "status": "done",
+      "startedAt": "2026-11-08T21:35:37.674Z",
+      "balanceBefore": 2845,
+      "version": "G1-Turbo",
+      "objectId": "1a5qd71pru",
+      "credits": 43,
+      "balanceAfter": 2802,
+      "measuredCredits": 43,
+      "seconds": 230,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 92,
+        "fetch-result": 5,
+        "upload-for-split": 8,
+        "part-split": 95,
+        "process": 9,
+        "publish": 2
+      },
+      "process": {
+        "parts": 6,
+        "tris": 18130,
+        "visualKB": 333,
+        "partsKB": 11
+      },
+      "finishedAt": "2026-11-08T21:39:27.803Z"
+    },
+    "bean-bag": {
+      "jobId": "gdt9149s1h",
+      "status": "done",
+      "startedAt": "2026-11-08T21:39:30.570Z",
+      "balanceBefore": 2802,
+      "version": "G1-Turbo",
+      "objectId": "gdt9149s1h",
+      "credits": 13,
+      "balanceAfter": 2789,
+      "measuredCredits": 13,
+      "seconds": 116,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 90,
+        "fetch-result": 5,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 6,
+        "publish": 2
+      },
+      "process": {
+        "parts": 1,
+        "tris": 18010,
+        "visualKB": 313,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T21:41:26.981Z"
+    },
+    "rolled-rug": {
+      "jobId": "233lyl9qod",
+      "status": "done",
+      "startedAt": "2026-11-08T21:41:29.762Z",
+      "balanceBefore": 2789,
+      "version": "G1-Turbo",
+      "objectId": "233lyl9qod",
+      "credits": 13,
+      "balanceAfter": 2776,
+      "measuredCredits": 13,
+      "seconds": 107,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 81,
+        "fetch-result": 5,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 5,
+        "publish": 2
+      },
+      "process": {
+        "parts": 1,
+        "tris": 19146,
+        "visualKB": 395,
+        "partsKB": 6
+      },
+      "finishedAt": "2026-11-08T21:43:16.914Z"
+    },
+    "folding-chair": {
+      "jobId": "3o1l0gpa46",
+      "status": "done",
+      "startedAt": "2026-11-08T21:43:19.845Z",
+      "balanceBefore": 2776,
+      "version": "G1-Turbo",
+      "objectId": "3o1l0gpa46",
+      "credits": 43,
+      "balanceAfter": 2733,
+      "measuredCredits": 43,
+      "seconds": 210,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 82,
+        "fetch-result": 5,
+        "upload-for-split": 8,
+        "part-split": 84,
+        "process": 11,
+        "publish": 3
+      },
+      "process": {
+        "parts": 4,
+        "tris": 13446,
+        "visualKB": 336,
+        "partsKB": 15
+      },
+      "finishedAt": "2026-11-08T21:46:49.417Z"
+    },
+    "step-stool": {
+      "jobId": "8gok46xzw8",
+      "status": "done",
+      "startedAt": "2026-11-08T21:46:52.501Z",
+      "balanceBefore": 2733,
+      "version": "G1-Turbo",
+      "objectId": "8gok46xzw8",
+      "credits": 43,
+      "balanceAfter": 2690,
+      "measuredCredits": 43,
+      "seconds": 249,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 92,
+        "fetch-result": 10,
+        "upload-for-split": 10,
+        "part-split": 106,
+        "process": 11,
+        "publish": 3
+      },
+      "process": {
+        "parts": 9,
+        "tris": 18786,
+        "visualKB": 361,
+        "partsKB": 41
+      },
+      "finishedAt": "2026-11-08T21:51:01.574Z"
+    },
+    "coat-rack": {
+      "jobId": "pxottlk77d",
+      "status": "done",
+      "startedAt": "2026-11-08T21:51:04.324Z",
+      "balanceBefore": 2690,
+      "version": "G1-Turbo",
+      "objectId": "pxottlk77d",
+      "credits": 43,
+      "balanceAfter": 2647,
+      "measuredCredits": 43,
+      "seconds": 2,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 84,
+        "fetch-result": 7,
+        "upload-for-split": 9,
+        "part-split": 71,
+        "process": 14,
+        "publish": 3
+      },
+      "process": {
+        "parts": 2,
+        "tris": 18684,
+        "visualKB": 365,
+        "partsKB": 10
+      },
+      "finishedAt": "2026-11-08T21:55:23.499Z"
+    },
+    "standing-fan": {
+      "jobId": "3md8h7z2sf",
+      "status": "done",
+      "startedAt": "2026-11-08T21:55:26.271Z",
+      "balanceBefore": 2647,
+      "version": "G1-Turbo",
+      "objectId": "3md8h7z2sf",
+      "credits": 43,
+      "balanceAfter": 2604,
+      "measuredCredits": 43,
+      "seconds": 213,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 84,
+        "fetch-result": 6,
+        "upload-for-split": 9,
+        "part-split": 90,
+        "process": 3,
+        "publish": 0
+      },
+      "process": {
+        "parts": 3,
+        "tris": 24248,
+        "visualKB": 573,
+        "partsKB": 16
+      },
+      "finishedAt": "2026-11-08T21:58:58.867Z"
+    },
+    "ottoman": {
+      "jobId": "muubkslo03",
+      "status": "done",
+      "startedAt": "2026-11-08T21:59:03.139Z",
+      "balanceBefore": 2604,
+      "version": "G1-Turbo",
+      "objectId": "muubkslo03",
+      "credits": 13,
+      "balanceAfter": 2591,
+      "measuredCredits": 13,
+      "seconds": 126,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 95,
+        "fetch-result": 6,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 9,
+        "publish": 2
+      },
+      "process": {
+        "parts": 1,
+        "tris": 17114,
+        "visualKB": 357,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T22:01:09.511Z"
+    },
+    "toy-truck": {
+      "jobId": "jl292ab2rf",
+      "status": "done",
+      "startedAt": "2026-11-08T22:01:12.154Z",
+      "balanceBefore": 2591,
+      "version": "G1-Turbo",
+      "objectId": "jl292ab2rf",
+      "credits": 43,
+      "balanceAfter": 2548,
+      "measuredCredits": 43,
+      "seconds": 274,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 103,
+        "fetch-result": 11,
+        "upload-for-split": 12,
+        "part-split": 113,
+        "process": 15,
+        "publish": 3
+      },
+      "process": {
+        "parts": 10,
+        "tris": 24624,
+        "visualKB": 817,
+        "partsKB": 29
+      },
+      "finishedAt": "2026-11-08T22:05:46.344Z"
+    },
+    "teddy-bear": {
+      "jobId": "mu8bwhxfyz",
+      "status": "done",
+      "startedAt": "2026-11-08T22:05:49.120Z",
+      "balanceBefore": 2548,
+      "version": "G1-Turbo",
+      "objectId": "mu8bwhxfyz",
+      "credits": 13,
+      "balanceAfter": 2535,
+      "measuredCredits": 13,
+      "seconds": 127,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 96,
+        "fetch-result": 7,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 9,
+        "publish": 3
+      },
+      "process": {
+        "parts": 1,
+        "tris": 17280,
+        "visualKB": 373,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T22:07:55.789Z"
+    },
+    "block-pile": {
+      "jobId": "7k8g4za82g",
+      "status": "done",
+      "startedAt": "2026-11-08T22:07:58.637Z",
+      "balanceBefore": 2535,
+      "version": "G1-Turbo",
+      "objectId": "7k8g4za82g",
+      "credits": 43,
+      "balanceAfter": 2492,
+      "measuredCredits": 43,
+      "seconds": 250,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 90,
+        "fetch-result": 7,
+        "upload-for-split": 7,
+        "part-split": 117,
+        "process": 14,
+        "publish": 3
+      },
+      "process": {
+        "parts": 11,
+        "tris": 15804,
+        "visualKB": 484,
+        "partsKB": 34
+      },
+      "finishedAt": "2026-11-08T22:12:09.053Z"
+    },
+    "rocking-horse": {
+      "jobId": "r5z0lpz9zl",
+      "status": "done",
+      "startedAt": "2026-11-08T22:12:11.910Z",
+      "balanceBefore": 2492,
+      "version": "G1-Turbo",
+      "objectId": "r5z0lpz9zl",
+      "credits": 43,
+      "balanceAfter": 2449,
+      "measuredCredits": 43,
+      "seconds": 234,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 90,
+        "fetch-result": 6,
+        "upload-for-split": 10,
+        "part-split": 96,
+        "process": 11,
+        "publish": 3
+      },
+      "process": {
+        "parts": 11,
+        "tris": 20770,
+        "visualKB": 562,
+        "partsKB": 36
+      },
+      "finishedAt": "2026-11-08T22:16:05.531Z"
+    },
+    "toy-train": {
+      "jobId": "sb6xuve3bq",
+      "status": "done",
+      "startedAt": "2026-11-08T22:16:08.545Z",
+      "balanceBefore": 2449,
+      "version": "G1-Turbo",
+      "objectId": "sb6xuve3bq",
+      "credits": 43,
+      "balanceAfter": 2406,
+      "measuredCredits": 43,
+      "seconds": 222,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 89,
+        "fetch-result": 5,
+        "upload-for-split": 8,
+        "part-split": 87,
+        "process": 12,
+        "publish": 3
+      },
+      "process": {
+        "parts": 5,
+        "tris": 24242,
+        "visualKB": 723,
+        "partsKB": 14
+      },
+      "finishedAt": "2026-11-08T22:19:50.746Z"
+    },
+    "football": {
+      "jobId": "k0bbtruxhy",
+      "status": "done",
+      "startedAt": "2026-11-08T22:19:53.566Z",
+      "balanceBefore": 2406,
+      "version": "G1-Turbo",
+      "objectId": "k0bbtruxhy",
+      "credits": 13,
+      "balanceAfter": 2393,
+      "measuredCredits": 13,
+      "seconds": 126,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 97,
+        "fetch-result": 5,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 8,
+        "publish": 3
+      },
+      "process": {
+        "parts": 1,
+        "tris": 16364,
+        "visualKB": 331,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T22:21:59.120Z"
+    },
+    "hurdle": {
+      "jobId": "m26d3dew93",
+      "status": "done",
+      "startedAt": "2026-11-08T22:22:02.154Z",
+      "balanceBefore": 2393,
+      "version": "G1-Turbo",
+      "objectId": "m26d3dew93",
+      "credits": 43,
+      "balanceAfter": 2350,
+      "measuredCredits": 43,
+      "seconds": 240,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 84,
+        "fetch-result": 5,
+        "upload-for-split": 10,
+        "part-split": 108,
+        "process": 12,
+        "publish": 3
+      },
+      "process": {
+        "parts": 11,
+        "tris": 24450,
+        "visualKB": 792,
+        "partsKB": 41
+      },
+      "finishedAt": "2026-11-08T22:26:01.866Z"
+    },
+    "kettlebell": {
+      "jobId": "5a13p40lpu",
+      "status": "done",
+      "startedAt": "2026-11-08T22:26:04.934Z",
+      "balanceBefore": 2350,
+      "version": "G1-Turbo",
+      "objectId": "5a13p40lpu",
+      "credits": 13,
+      "balanceAfter": 2337,
+      "measuredCredits": 13,
+      "seconds": 112,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 86,
+        "fetch-result": 5,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 5,
+        "publish": 3
+      },
+      "process": {
+        "parts": 1,
+        "tris": 18166,
+        "visualKB": 256,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T22:27:57.103Z"
+    },
+    "yoga-ball": {
+      "jobId": "sx9utz2qb4",
+      "status": "done",
+      "startedAt": "2026-11-08T22:28:00.027Z",
+      "balanceBefore": 2337,
+      "version": "G1-Turbo",
+      "objectId": "sx9utz2qb4",
+      "credits": 13,
+      "balanceAfter": 2324,
+      "measuredCredits": 13,
+      "seconds": 126,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 100,
+        "fetch-result": 5,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 5,
+        "publish": 2
+      },
+      "process": {
+        "parts": 1,
+        "tris": 18136,
+        "visualKB": 274,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T22:30:06.146Z"
+    },
+    "agility-ladder": {
+      "jobId": "b6m5bhd1gj",
+      "status": "running",
+      "startedAt": "2026-11-08T22:30:09.410Z",
+      "balanceBefore": 2324,
       "version": "G1-Turbo"
     }
   },
-  "totalCredits": 556,
+  "totalCredits": 1232,
   "runs": []
 }

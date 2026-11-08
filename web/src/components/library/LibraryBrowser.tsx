@@ -24,10 +24,12 @@ export function LibraryBrowser() {
   useEffect(() => {
     tripIndex().then(setTrips);
   }, []);
+  // messages belong to the object they were about
+  useEffect(() => setPackMsg(null), [open]);
   async function tripTest(e: LibraryEntry) {
     setTripping(true);
     try {
-      const r = await runTripTest(e.id, e.name);
+      const r = await runTripTest(e.id, e.name, e.slug);
       setTrips((t) => ({ ...t, [e.id]: r }));
     } finally {
       setTripping(false);
@@ -211,7 +213,7 @@ export function LibraryBrowser() {
                   <div className="sheet mt-5 p-4 text-[14px] text-ink-2">
                     {open.kind === "pedestrian"
                       ? "Made with Lux3D text-to-3D, then Lux3D rig and Lux3D retarget (Walk_Loop). In the arena it walks across the course as a moving obstacle that pushes the robot."
-                      : "Made with Lux3D text-to-3D, then Lux3D articulation from a sentence describing the motion. Shown here playing its articulation clip."}
+                      : "Made with Lux3D text-to-3D, then Lux3D articulation from a sentence describing the motion: a URDF with a real hinge joint and its limits. The hinge swings here in the viewer; in the arena it stands as one solid for now."}
                   </div>
                 ) : (
                 <div className="sheet mt-5 p-4">
@@ -261,7 +263,7 @@ export function LibraryBrowser() {
                 </p>
                 <div className="mt-5">
                   <Stamp tone="route" rotate={-3}>
-                    Lux3D · {open.parts > 1 ? "part-split" : "single part"}
+                    Lux3D · {open.kind === "articulated" ? "articulation" : open.kind === "pedestrian" ? "rig + walk" : open.parts > 1 ? "part-split" : "single part"}
                   </Stamp>
                 </div>
               </div>

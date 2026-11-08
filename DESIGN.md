@@ -37,7 +37,7 @@ HOME
 [ run 10 trials, live: 10 small cameras running seeded trials side by side, stamping results ]
 [ library wall: real generated objects rotating on report cards, filter chips ]
 [ gauntlet: hardest courses with pass-rate stamps ]
-[ measured facts: parity 2.5e-6 m, 8× real time, Lux3D 80 s, credits/object ]
+[ measured facts: parity 2.5e-6 m, 8× real time, Lux3D ~90 s, credits/object ]
 [ for robotics teams: robot-ready asset pack (GLB + hull STLs + MJCF) ]
 [ limits, honest ]
 [ footer: sitemap, credits (Unitree BSD-3, MuJoCo Apache-2, Lux3D), changelog, X post ]

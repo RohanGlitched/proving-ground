@@ -6,7 +6,7 @@ import { CourseList } from "@/components/gauntlet/CourseList";
 
 export const metadata: Metadata = {
   title: "Gauntlet",
-  description: "Courses people built from Lux3D objects, ranked by how often Unitree's G1 walking controller fails them.",
+  description: "Courses built from Lux3D objects, ranked by how often Unitree's G1 walking controller fails them.",
 };
 
 export default function GauntletPage() {
@@ -18,8 +18,9 @@ export default function GauntletPage() {
           <div className="md:col-span-7">
             <h1 className="placard text-[39px] sm:text-[49px]">The gauntlet</h1>
             <p className="mt-4 max-w-2xl text-[17px] leading-[1.7] text-ink-2">
-              Courses built from Lux3D objects and tested ten runs at a time. The pass rate is the share of all recorded trials where the robot
-              reached the flag. Open one to watch it, remix it, or try to beat it with the planner.
+              Courses built from Lux3D objects and tested ten runs at a time. It starts with a set we seeded; anything you save from the arena
+              joins it. The pass rate is the share of all recorded trials where the robot reached the flag. Open one to watch it, remix it, or
+              try to beat it with the planner.
             </p>
           </div>
           <div className="flex items-end md:col-span-5 md:justify-end">

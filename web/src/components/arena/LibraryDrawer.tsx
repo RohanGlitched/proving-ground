@@ -11,7 +11,7 @@ export function LibraryDrawer({ items, loading, onAdd }: { items: LibraryEntry[]
   const [cat, setCat] = useState<string>("all");
   const cats = useMemo(() => ["all", ...Array.from(new Set(items.map((i) => i.category ?? "made by people"))).sort()], [items]);
   const shown = items
-    .filter((i) => i.kind === "object")
+    .filter((i) => i.kind === "object" || i.kind === "articulated")
     .filter((i) => cat === "all" || (i.category ?? "made by people") === cat)
     .filter((i) => !q || i.name.toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => b.createdAt - a.createdAt);

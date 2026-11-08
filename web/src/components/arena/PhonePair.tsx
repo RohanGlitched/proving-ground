@@ -33,7 +33,7 @@ export function PhonePair({ onReady }: { onReady: (objectId: string, name: strin
     let alive = true;
     const tick = async () => {
       try {
-        const r = await fetch(`/api/rooms/${code}`, { cache: "no-store" }).then((x) => x.json());
+        const r = await fetch(`/api/rooms/${code}?host=1`, { cache: "no-store" }).then((x) => x.json());
         const ids: string[] = (r.jobs ?? []).map((j: { id: string }) => j.id);
         for (const id of ids) {
           if (delivered.current.has(id)) continue;

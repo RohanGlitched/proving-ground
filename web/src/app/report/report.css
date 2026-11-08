@@ -3,23 +3,70 @@
   margin: 0;
 }
 
+/*
+ * The deck is 1600 x 900 slides. On screen each slide is scaled uniformly to the width of the page
+ * (never above 100%), and on phones (< 900 px) it turns into a stacked layout at 560 px logical width.
+ * Print / PDF output is always exactly 1600 x 900 per page.
+ */
 .report {
+  container-type: inline-size;
+  container-name: report;
   background: #d9d8d2;
+  padding: 0 0 8px;
+  min-height: 100vh;
+}
+
+.report-nav {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 12px 16px 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  color: var(--ink-3);
+}
+.report-nav a {
+  color: var(--ink-2);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(20, 21, 23, 0.25);
+}
+.report-nav a:hover {
+  border-bottom-color: var(--ink);
+  color: var(--ink);
+}
+
+.slide-frame {
+  --s: 1;
+  position: relative;
+  width: calc(1600px * var(--s));
+  height: calc(900px * var(--s));
+  margin: 0 auto 16px;
+  overflow: hidden;
+  break-after: page;
+  page-break-after: always;
+}
+@supports (width: calc(1px * tan(atan2(1px, 1px)))) {
+  .slide-frame {
+    --s: min(1, tan(atan2(100cqw, 1600px)));
+  }
 }
 
 .slide {
-  position: relative;
+  position: absolute;
+  left: 0;
+  top: 0;
   width: 1600px;
   height: 900px;
-  margin: 0 auto 24px;
-  padding: 44px 72px 56px;
+  transform: scale(var(--s));
+  transform-origin: top left;
+  padding: 44px 72px 48px;
   background: var(--concrete);
   color: var(--ink);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  break-after: page;
-  page-break-after: always;
 }
 .slide-dark {
   background: var(--cam);
@@ -37,19 +84,31 @@
   color: var(--ink-3);
 }
 .slide-title {
-  margin-top: 34px;
+  margin-top: 26px;
   font-size: 46px;
-  max-width: 28ch;
+  white-space: nowrap;
 }
 .slide-body {
-  margin-top: 34px;
+  margin-top: 26px;
   flex: 1;
   min-height: 0;
 }
+
 .report-img {
   display: block;
   border-radius: 4px;
   background: #0f1012;
+  width: 100%;
+  height: auto;
+}
+.report-img.shot {
+  box-shadow: 0 0 0 1px rgba(20, 21, 23, 0.2);
+  background: var(--concrete);
+}
+.report-img.shot-fade {
+  background: transparent;
+  -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, #000 82%, transparent);
 }
 .report-card {
   background: var(--paper);
@@ -68,14 +127,170 @@
   text-align: left;
   font-weight: 600;
   color: var(--ink-3);
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-bottom: 1px solid rgba(20, 21, 23, 0.12);
 }
 .report-table td {
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-bottom: 1px solid rgba(20, 21, 23, 0.07);
   font-variant-numeric: tabular-nums;
 }
+.report-table.compact {
+  font-size: 17px;
+}
+.report-table.compact td,
+.report-table.compact th {
+  padding: 6px 12px;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+
+/* image with a label chip pinned to a corner */
+.tile {
+  position: relative;
+}
+.tile .chip {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+}
+.chip {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 6px 9px;
+  border-radius: 3px;
+  background: rgba(15, 16, 18, 0.86);
+  color: #fff;
+}
+.tile .chip.bl {
+  top: auto;
+  bottom: 10px;
+}
+.chip.fault {
+  background: var(--fault);
+}
+.chip.pass {
+  background: var(--pass);
+}
+.chip.target {
+  background: var(--target);
+  color: var(--ink);
+}
+
+.cap-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.cap-text {
+  font-size: 17px;
+  line-height: 1.38;
+  color: var(--ink-2);
+}
+
+/* stat tiles */
+.stat {
+  background: var(--paper);
+  border-radius: 3px;
+  padding: 16px 20px 18px;
+  box-shadow: 0 0 0 1px rgba(20, 21, 23, 0.08);
+  border-top: 3px solid var(--target);
+}
+.stat-n {
+  font-family: var(--font-mono);
+  font-size: 36px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-h {
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.stat-t {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--ink-3);
+}
+
+/* time bars */
+.tbar {
+  display: flex;
+  height: 42px;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(20, 21, 23, 0.1);
+}
+.tbar > span {
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.seg-generate {
+  background: var(--ink);
+  color: #fff;
+}
+.seg-split {
+  background: var(--route);
+  color: #fff;
+}
+.seg-rig {
+  background: #7d96ef;
+  color: var(--ink);
+}
+.seg-walk {
+  background: var(--target);
+  color: var(--ink);
+}
+.seg-ours {
+  background: var(--slab-deep);
+  color: var(--ink);
+}
+.key-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 7px;
+  vertical-align: -1px;
+}
+
+/* control loop */
+.loop {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 30px;
+}
+.loop > div {
+  position: relative;
+  background: var(--paper);
+  border-radius: 3px;
+  padding: 12px 16px 14px;
+  box-shadow: 0 0 0 1px rgba(20, 21, 23, 0.08);
+  border-top: 3px solid var(--ink);
+}
+.loop > div:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -23px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-top: 3px solid var(--ink);
+  border-right: 3px solid var(--ink);
+  transform: translateY(-50%) rotate(45deg) scale(0.6);
+}
+
 .cover {
   padding: 0;
 }
@@ -86,6 +301,7 @@
   height: 100%;
   object-fit: cover;
   opacity: 0.85;
+  border-radius: 0;
 }
 .cover-text {
   position: relative;
@@ -94,19 +310,122 @@
   background: linear-gradient(to top, rgba(15, 16, 18, 0.95), rgba(15, 16, 18, 0.55) 70%, transparent);
 }
 
+.slide-frame:last-of-type {
+  break-after: auto;
+  page-break-after: auto;
+}
+
 @media print {
   .report {
     background: none;
+    padding: 0;
+    min-height: 0;
+    container-type: normal;
+  }
+  .report-nav {
+    display: none !important;
+  }
+  .slide-frame {
+    --s: 1 !important;
+    width: 1600px !important;
+    height: 900px !important;
+    margin: 0 !important;
   }
   .slide {
-    margin: 0;
+    transform: none !important;
+    zoom: 1 !important;
   }
   nextjs-portal {
     display: none;
   }
 }
 
-.slide:last-child {
-  break-after: auto;
-  page-break-after: auto;
+/* phones and narrow windows: stacked slides at 560 px logical width, scaled to the screen */
+@media screen {
+  @container report (max-width: 899px) {
+    .report-nav {
+      padding: 10px 12px 8px;
+    }
+    .slide-frame {
+      --s: 1;
+      width: 100%;
+      height: auto;
+      margin: 0 0 12px;
+      overflow: visible;
+    }
+    .slide {
+      position: relative;
+      width: 560px;
+      height: auto;
+      min-height: 0;
+      transform: none;
+      zoom: tan(atan2(100cqw, 560px));
+      padding: 24px 22px 28px;
+    }
+    .slide-title {
+      white-space: normal;
+      font-size: 29px;
+      margin-top: 18px;
+    }
+    .slide-body {
+      margin-top: 18px;
+    }
+    .slide-head {
+      font-size: 14px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .slide .cols {
+      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 18px !important;
+    }
+    .slide .cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 12px !important;
+    }
+    .slide .report-table {
+      font-size: 14px;
+    }
+    .slide .report-table th,
+    .slide .report-table td {
+      padding: 6px 8px;
+    }
+    .cover {
+      min-height: 520px;
+    }
+    .cover-text {
+      padding: 28px 22px;
+    }
+    .cover-text h1 {
+      font-size: 34px !important;
+    }
+    .cover-text p {
+      font-size: 17px !important;
+    }
+    .loop {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 18px;
+    }
+    .loop > div:not(:last-child)::after {
+      right: auto;
+      left: 50%;
+      top: auto;
+      bottom: -17px;
+      transform: translateX(-50%) rotate(135deg) scale(0.6);
+    }
+    .slide .tbar > span {
+      font-size: 11px;
+      padding-left: 4px;
+    }
+    .slide .stat-n {
+      font-size: 28px;
+    }
+    .slide .tile img {
+      height: auto !important;
+      object-position: 50% 50% !important;
+    }
+    .slide .no-mobile {
+      display: none;
+    }
+  }
 }

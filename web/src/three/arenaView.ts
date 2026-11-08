@@ -145,6 +145,14 @@ export class ArenaView {
   onSelect?: (uid: string | null) => void;
   onMove?: (uid: string, x: number, y: number) => void;
   onGoal?: (x: number, y: number) => void;
+  /** click or tap on the robot: shove it away from the pointer (angle in the MuJoCo floor plane) */
+  onShove?: (angle: number) => void;
+  /** steer mode: the camera follows the robot */
+  chase = false;
+  private focus: THREE.Vector3 | null = null; // robot pelvis, three.js frame
+  private impactT = 0;
+  private shake = new THREE.Vector3();
+  private baseFov = 0;
   private lastPelvis = new THREE.Vector3();
   private robotFlash = 0;
 
@@ -403,12 +411,51 @@ export class ArenaView {
     this.pushArrows.push({ obj: arrow, life: 1.4 });
   }
 
+  /** robot pelvis from the sim (MuJoCo Z-up) for the chase camera and click-to-shove */
+  setFocus(p: [number, number, number]) {
+    (this.focus ??= new THREE.Vector3()).set(p[0], p[2], -p[1]);
+  }
+
+  /** the fall: a quick zoom punch and a short camera shake */
+  impact() {
+    this.impactT = 1;
+  }
+
   setShowHulls(v: boolean) {
     this.showHulls = v;
     for (const e of this.objects.values()) e.mat?.setHullView(v);
   }
 
   private tick(dt: number) {
+    const cam = this.stage.camera;
+    cam.position.sub(this.shake);
+    this.shake.set(0, 0, 0);
+    if (this.chase && this.focus && this.stage.controls) {
+      // keep the orbit, slide it along with the robot
+      const t = this.stage.controls.target;
+      const want = new THREE.Vector3(this.focus.x + 0.6, 0.45, this.focus.z);
+      const d = want.sub(t).multiplyScalar(Math.min(1, dt * 2.5));
+      t.add(d);
+      cam.position.add(d);
+    }
+    if (!this.baseFov) this.baseFov = cam.fov;
+    if (this.impactT > 0) {
+      this.impactT = Math.max(0, this.impactT - dt / 1.6);
+      const k = this.impactT;
+      // punch in fast, ease back out slowly
+      const zoom = k > 0.85 ? (1 - k) / 0.15 : k / 0.85;
+      cam.fov = this.baseFov * (1 - 0.16 * zoom);
+      cam.updateProjectionMatrix();
+      const amp = 0.07 * Math.max(0, k - 0.45) / 0.55;
+      if (amp > 0) {
+        this.shake.set((Math.random() - 0.5) * amp, (Math.random() - 0.5) * amp, (Math.random() - 0.5) * amp);
+        cam.position.add(this.shake);
+      }
+      if (k === 0) {
+        cam.fov = this.baseFov;
+        cam.updateProjectionMatrix();
+      }
+    }
     for (const m of this.movers.values()) m.mixer?.update(dt);
     for (const a of this.pushArrows) {
       a.life -= dt;
@@ -453,8 +500,17 @@ export class ArenaView {
 
   private bindPointer(canvas: HTMLCanvasElement) {
     canvas.addEventListener("pointerdown", (ev) => {
-      if (!this.editable || ev.button !== 0) return;
+      if (ev.button !== 0) return;
       const ray = this.pick(ev);
+      const robotHit = this.onShove && this.robot && this.focus ? ray.intersectObject(this.robot.group, true)[0] : undefined;
+      if (robotHit && this.focus) {
+        // poke it: push from the touched point through the pelvis (MuJoCo xy = three x, -three z)
+        let dx = this.focus.x - robotHit.point.x, dy = -this.focus.z + robotHit.point.z;
+        if (Math.hypot(dx, dy) < 0.03) { dx = ray.ray.direction.x; dy = -ray.ray.direction.z; }
+        this.onShove!(Math.atan2(dy, dx));
+        return;
+      }
+      if (!this.editable) return;
       const goalHit = ray.intersectObject(this.goal, true)[0];
       const roots = [...this.objects.values()].map((e) => e.root);
       const hit = ray.intersectObjects(roots, true)[0];

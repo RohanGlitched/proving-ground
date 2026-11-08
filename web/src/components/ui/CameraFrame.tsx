@@ -61,12 +61,15 @@ export function CameraFrame({ label, clock, pxPerMetre, rec = true, right, botto
         <span className={`${corner} right-3 top-3 border-r border-t`} />
         <span className={`${corner} left-3 bottom-3 border-l border-b`} />
         <span className={`${corner} right-3 bottom-3 border-r border-b`} />
-        <div className="data absolute left-6 top-5 flex items-center gap-3 text-[11px] text-white/80 sm:text-xs">
-          {rec && <span className="rec-dot inline-block h-2 w-2 rounded-full bg-fault" aria-hidden />}
-          <span>{label}</span>
-          <span ref={tcRef} className="text-white/60" aria-label="sim time" />
+        {/* narrow frames: label and timecode stack, and each side keeps to its own half so they never overprint */}
+        <div className="data absolute left-6 top-5 flex max-w-[calc(50%-1.75rem)] flex-col gap-1 text-[11px] text-white/80 sm:max-w-none sm:flex-row sm:items-center sm:gap-3 sm:text-xs">
+          <span className="flex min-w-0 items-center gap-2 sm:gap-3">
+            {rec && <span className="rec-dot inline-block h-2 w-2 shrink-0 rounded-full bg-fault" aria-hidden />}
+            <span className="truncate">{label}</span>
+          </span>
+          {clock && <span ref={tcRef} className="text-white/60" aria-label="sim time" />}
         </div>
-        <div className="data absolute right-6 top-5 text-right text-[11px] text-white/60 sm:text-xs">
+        <div className="data absolute right-6 top-5 min-w-0 max-w-[calc(50%-1.75rem)] text-right text-[11px] text-white/60 sm:max-w-[50%] sm:text-xs">
           {right ?? (
             <>
               FRAME <span ref={frameRef} />
@@ -77,7 +80,7 @@ export function CameraFrame({ label, clock, pxPerMetre, rec = true, right, botto
           <div ref={barRef} className="relative h-2 border-x border-b border-white/70 transition-[width] duration-200" style={{ width: 0, opacity: 0 }} />
           <span>1 m</span>
         </div>
-        {bottomRight && <div className="data absolute bottom-5 right-6 text-[11px] text-white/70">{bottomRight}</div>}
+        {bottomRight && <div className="data absolute bottom-5 right-6 max-w-[calc(100%-3rem)] truncate text-right text-[11px] text-white/70 sm:max-w-[60%]">{bottomRight}</div>}
       </div>
     </div>
   );

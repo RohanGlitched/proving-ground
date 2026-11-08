@@ -65,6 +65,8 @@ export type Joint = {
 };
 
 export type ProcessStats = {
+  /** Uniform scale applied by the size check (1 = untouched). */
+  fitScale?: number;
   inputBytes: number;
   visualBytes: number;
   partsBytes: number;
@@ -349,6 +351,12 @@ export type ProcessInput = {
   clipName?: string;
   /** The unsplit generation GLB; its closed volume is shared out across split parts. */
   wholeGlb?: Buffer;
+  /**
+   * Typical largest dimension (m) for this kind of object. Lux3D usually gets real size right, but now and
+   * then returns a 3.9 m door or a 2.2 m skateboard; when the model is off by more than 35% it is scaled
+   * uniformly to this size (static objects only).
+   */
+  fitMaxDim?: number;
 };
 
 export async function processModel(input: ProcessInput): Promise<ProcessResult> {
@@ -375,6 +383,7 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
   const scene = root.getDefaultScene() ?? root.listScenes()[0];
   let partList: Part[];
   let source: PartsDoc["source"];
+  let fitScale = 1;
   if (!animated) {
     // bake transforms and move each part to the scene root (meshes are unshared after this)
     for (const n of nodes) {
@@ -384,6 +393,18 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
       clearNodeTransform(n);
     }
     for (const child of scene.listChildren()) if (!nodes.includes(child)) child.dispose();
+    if (input.fitMaxDim) {
+      const b0 = getBounds(scene);
+      const dim = Math.max(...[0, 1, 2].map((k) => b0.max[k] - b0.min[k]));
+      const ratio = dim > 0 ? input.fitMaxDim / dim : 1;
+      if (ratio < 1 / 1.35 || ratio > 1.35) {
+        fitScale = ratio;
+        for (const n of nodes) {
+          n.setScale([ratio, ratio, ratio]);
+          clearNodeTransform(n);
+        }
+      }
+    }
     nodes.forEach((n, i) => {
       n.setName(`part-${i}`);
       n.getMesh()!.setName(`part-${i}`);
@@ -392,6 +413,7 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
       partList = nodes.map((n, i) => withVolume(partFrom(`part-${i}`, nodePositions(n)), meshVolume(n)));
       if (input.wholeGlb && partList.some((p) => p.volumeMethod === "hull")) {
         const whole = sumMesh(meshNodes(await io.readBinary(new Uint8Array(input.wholeGlb))));
+        whole.volume *= fitScale ** 3; // the unsplit mesh was not rescaled by the size check
         const hullSum = partList.reduce((t, p) => t + p.hullVolume, 0);
         if (whole.closed && whole.volume > 0 && hullSum > 0)
           partList = partList.map((p) => ({ ...p, volume: +((whole.volume * p.hullVolume) / hullSum).toPrecision(5), volumeMethod: "mesh-share" as const }));
@@ -487,6 +509,7 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
     partsJson,
     lux3dMetadata,
     stats: {
+      fitScale,
       inputBytes: input.glb.length,
       visualBytes: visual!.byteLength,
       partsBytes: Buffer.byteLength(partsJson),

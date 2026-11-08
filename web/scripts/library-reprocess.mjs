@@ -54,5 +54,5 @@ for (const e of lib.items) {
   };
   await s.putJSON(`objects/${e.id}/meta.json`, next);
   await appendToLibrary(next, s);
-  console.log(`${(e.slug ?? e.id).padEnd(22)} ${next.parts} parts  ${(next.volume * 1000).toFixed(2)} L (${r.parts.parts[0].volumeMethod})  ${Math.round(r.stats.visualBytes / 1024)} KB`);
+  console.log(`${(e.slug ?? e.id).padEnd(22)} scale ${(r.stats.fitScale ?? 1).toFixed(2)}  size ${next.size.join("x")}  ${next.parts} parts  ${(next.volume * 1000).toFixed(2)} L (${r.parts.parts[0].volumeMethod})  ${Math.round(r.stats.visualBytes / 1024)} KB`);
 }

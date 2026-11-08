@@ -8,7 +8,7 @@
 //   const f = sim.latest(); if (f) { f.poses ... f.header.fallen ... }
 //   const summary = await sim.runTrials({ scene, n: 10, seed: 1, mode: 'planner' }, (done, n, r) => {});
 import {
-  HEADER, H_CONTACTS, H_FELL_AT, H_GOAL_AT, H_GOAL_REACHED, H_GOAL_X, H_GOAL_Y, H_LAST_CONTACT, H_LAST_CONTACT_T,
+  HEADER, H_CONTACTS, H_RESERVED, H_FELL_AT, H_GOAL_AT, H_GOAL_REACHED, H_GOAL_X, H_GOAL_Y, H_LAST_CONTACT, H_LAST_CONTACT_T,
   H_PELVIS_X, H_PELVIS_Y, H_PELVIS_Z, H_ROBOT_YAW, H_SEQ, H_STATUS, H_TIME, H_VX, H_VY, H_YAW, H_FALLEN,
 } from './frame';
 import type { InitResult, Request, SceneResult, WorkerEvent } from './protocol';
@@ -34,6 +34,8 @@ export interface FrameHeader {
   contactCount: number;
   fellAt: number | null;
   goalAt: number | null;
+  /** Planner is standing still to let a walker cross. */
+  yielding: boolean;
   seq: number;
 }
 
@@ -159,6 +161,7 @@ export function decodeHeader(b: Float32Array, layout: FrameLayout): FrameHeader 
     contactCount: b[H_CONTACTS],
     fellAt: b[H_FELL_AT] >= 0 ? b[H_FELL_AT] : null,
     goalAt: b[H_GOAL_AT] >= 0 ? b[H_GOAL_AT] : null,
+    yielding: b[H_RESERVED] === 1,
     seq: b[H_SEQ],
   };
 }

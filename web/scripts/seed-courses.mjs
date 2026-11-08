@@ -1,6 +1,7 @@
 // Seeds the gauntlet with a few starter courses: builds each from library objects, runs ten seeded
 // trials on the same engine the browser uses, then saves the course and its result through the public API.
 // Run: node --import tsx scripts/seed-courses.mjs [baseUrl] [--dry]
+import { defaultDensity } from '../src/lib/density.ts';
 import { makeEngine } from '../tests/sim/helpers.mjs';
 
 const base = process.argv[2]?.startsWith('http') ? process.argv[2] : 'https://proving-ground-snowy.vercel.app';
@@ -15,6 +16,17 @@ const COURSES = [
   { title: 'Cone slalom with shoves', mode: 'blind', pushes: true, objects: [['traffic-cone', 1.3, 0.3, 0], ['traffic-cone', 2.1, -0.3, 0], ['traffic-cone', 2.9, 0.3, 0], ['traffic-cone', 3.7, -0.3, 0]] },
   { title: 'Laundry day', mode: 'blind', pushes: false, objects: [['laundry-basket', 1.6, 0.0, 0.3], ['cardboard-box', 2.6, 0.3, 0.8], ['stack-of-books', 3.2, -0.25, 0.2]] },
   { title: 'Garage', mode: 'blind', pushes: true, objects: [['car-tire', 1.5, 0.0, 0], ['toolbox', 2.4, -0.3, 0.6], ['bucket', 3.1, 0.3, 0]] },
+  { title: "Toddler's room", mode: 'blind', pushes: false, objects: [['teddy-bear', 1.4, 0.1, 0.4], ['toy-truck', 2.2, -0.15, 1.2], ['block-pile', 2.9, 0.1, 0], ['toy-train', 3.6, -0.1, 0.3]] },
+  { title: 'Moving day', mode: 'blind', pushes: false, objects: [['cardboard-box', 1.4, 0.05, 0.2], ['suitcase', 2.3, -0.2, 1.4], ['cardboard-box', 3.1, 0.15, 0.9]] },
+  { title: 'Fruit bowl spill', mode: 'blind', pushes: false, objects: [['watermelon', 1.4, 0.05, 0], ['pumpkin', 2.2, -0.1, 0.5], ['pineapple', 2.9, 0.1, 0], ['banana-peel', 3.5, 0, 0.3]] },
+  { title: 'Gym floor', mode: 'blind', pushes: false, objects: [['kettlebell', 1.4, 0.0, 0], ['football', 2.1, 0.15, 0], ['yoga-ball', 2.9, -0.2, 0], ['kettlebell', 3.5, 0.1, 0.8]] },
+  { title: 'Building site', mode: 'blind', pushes: false, objects: [['cinder-block', 1.4, 0.0, 0.3], ['sandbag', 2.3, -0.05, 1.5], ['cinder-block', 3.2, 0.1, 1.1]] },
+  { title: 'Building site (planner)', mode: 'planner', pushes: false, objects: [['cinder-block', 1.4, 0.0, 0.3], ['sandbag', 2.3, -0.05, 1.5], ['cinder-block', 3.2, 0.1, 1.1]] },
+  { title: 'Curbside', mode: 'planner', pushes: false, objects: [['trash-can', 1.5, 0.25, 0], ['fire-hydrant', 2.3, -0.3, 0], ['bollard', 3.1, 0.2, 0]] },
+  { title: 'Office after hours', mode: 'blind', pushes: true, objects: [['office-chair', 1.6, 0.1, 0.7], ['bar-stool', 2.6, -0.25, 0], ['floor-lamp', 3.4, 0.3, 0]] },
+  { title: 'One banana peel', mode: 'blind', pushes: false, objects: [['banana-peel', 1.5, 0.0, 0.4]] },
+  { title: 'The rolled rug', mode: 'blind', pushes: false, objects: [['rolled-rug', 1.8, 0.0, 1.57]] },
+  { title: 'Bin day (planner)', mode: 'planner', pushes: false, objects: [['wheelie-bin', 1.7, 0.1, 0.3], ['wheelie-bin', 2.9, -0.25, 1.0]] },
 ];
 
 const existing = new Set(((await (await fetch(`${base}/api/courses?sort=new`)).json()).items ?? []).map((c) => c.title));
@@ -36,7 +48,7 @@ for (const c of COURSES) {
   const sceneObjects = [];
   for (const [i, o] of objs.entries()) {
     const ph = await physics(o.e.id);
-    sceneObjects.push({ id: `o${i}`, name: o.e.name, parts: ph.parts, x: o.x, y: o.y, yaw: o.yaw, mass: ph.volume ? ph.volume * 400 : undefined });
+    sceneObjects.push({ id: `o${i}`, name: o.e.name, parts: ph.parts, x: o.x, y: o.y, yaw: o.yaw, mass: ph.volume ? ph.volume * defaultDensity(o.e) : undefined });
   }
   const seed = 1000 + COURSES.indexOf(c);
   const goal = { x: 4.5, y: 0 };

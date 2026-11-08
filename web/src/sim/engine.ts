@@ -131,6 +131,8 @@ export class Engine {
   plan: number[] | null = null;
   private grid: Grid | null = null;
   private nextReplan = 0;
+  /** True while the planner is standing still to let a walker pass. */
+  yielding = false;
   /** Stop the robot (zero command) once it reaches the goal. */
   stopAtGoal = true;
 
@@ -301,7 +303,7 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
       this.touching.clear();
       this.grid = null;
       this.plan = null;
-      this.nextReplan = 0;
+      this.nextReplan = 0; this.yielding = false;
       this.eagerPlan();
     } else {
       this.reset();
@@ -352,14 +354,14 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     this.pushes = [];
     this.plan = null;
     this.grid = null;
-    this.nextReplan = 0;
+    this.nextReplan = 0; this.yielding = false;
     this.cmd = { vx: 0, vy: 0, yaw: 0 };
     this.updateMovers(0);
     mj.mj_forward(model, data);
     this.eagerPlan();
   }
 
-  setMode(mode: NavMode) { this.mode = mode; this.nextReplan = 0; this.eagerPlan(); }
+  setMode(mode: NavMode) { this.mode = mode; this.nextReplan = 0; this.yielding = false; this.eagerPlan(); }
 
   /**
    * In planner mode, plans right away so getPlan() has a path before the first step. The replan schedule is
@@ -368,10 +370,10 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
   private eagerPlan() {
     if (this.mode !== 'planner' || !this.data || this.status !== 'running') return;
     this.replan(this.robotPose());
-    this.nextReplan = 0;
+    this.nextReplan = 0; this.yielding = false;
   }
   setCommand(c: Partial<Command>) { Object.assign(this.manualCmd, c); }
-  setGoal(x: number, y: number) { this.goal = { x, y }; this.nextReplan = 0; if (this.status === 'goal') { this.status = 'running'; this.goalAt = null; } this.eagerPlan(); }
+  setGoal(x: number, y: number) { this.goal = { x, y }; this.nextReplan = 0; this.yielding = false; if (this.status === 'goal') { this.status = 'running'; this.goalAt = null; } this.eagerPlan(); }
   setSpeed(v: number) { this.nav.speed = v; }
 
   /** Applies a horizontal force to the pelvis for `duration` seconds starting now. */
@@ -414,7 +416,8 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     const pel = this.pelvisId * 6;
     const hasMovers = this.entities.some((e) => e.mover);
     for (let s = 0; s < n; s++) {
-      if (hasMovers) this.updateMovers((this.robotStep + 1) * DT);
+      // walkers stop where they are once the robot is down (no walking through a fallen body)
+      if (hasMovers) this.updateMovers(this.status === 'fell' && this.fellAt !== null ? this.fellAt : (this.robotStep + 1) * DT);
       const k = this.robotStep;
       xfrc[pel] = 0; xfrc[pel + 1] = 0; xfrc[pel + 2] = 0; xfrc[pel + 3] = 0; xfrc[pel + 4] = 0; xfrc[pel + 5] = 0;
       for (const p of this.pushes) {
@@ -481,17 +484,20 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
       // cheap check on the existing grid is meaningless for movers; replan schedule handles them
     }
     const dist = Math.hypot(this.goal.x - p.x, this.goal.y - p.y);
-    if (!this.plan) { blindCommand(p.x, p.y, p.yaw, this.goal.x, this.goal.y, this.nav.speed, c); return; }
+    if (!this.plan) { this.yielding = false; blindCommand(p.x, p.y, p.yaw, this.goal.x, this.goal.y, this.nav.speed, c); return; }
     pursuitCommand(p.x, p.y, p.yaw, this.plan, this.nav.speed, this.nav.lookahead, dist, c);
+    // someone is about to cross the path: stand and let them pass (turning on the spot is still allowed)
+    this.yielding = hasMovers && this.walkerConflict(p);
+    if (this.yielding) { c.vx = 0; c.vy = 0; }
   }
 
   /** Footprint polygons (world xy) of every entity part that a walking robot could hit. */
-  footprints(): number[][] {
+  footprints(staticOnly = false): number[][] {
     const d = this.data!;
     const xpos = d.xpos as Float64Array, xmat = d.xmat as Float64Array;
     const polys: number[][] = [];
     for (const e of this.entities) {
-      if (e.bodyId < 0) continue;
+      if (e.bodyId < 0 || (staticOnly && e.mover)) continue;
       const b = e.bodyId, P = 3 * b, R = 9 * b;
       for (const part of e.parts) {
         const xy: number[] = [];
@@ -511,8 +517,46 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     return polys;
   }
 
+  /**
+   * Speed control along the planned path (path-velocity decomposition): walks the next stretch of the plan at
+   * the robot's speed and checks whether a walker will be at any of those points at about the same moment.
+   * The path itself only avoids static objects, so it stays steady; walkers make the robot wait, not swerve.
+   */
+  private walkerConflict(p: Pose2): boolean {
+    const plan = this.plan;
+    if (!plan || plan.length < 4) return false;
+    const walkers = this.entities.filter((e) => e.mover && e.mover.path.length);
+    if (!walkers.length) return false;
+    const v = Math.max(0.2, this.nav.speed), t0 = this.time;
+    // nearest plan vertex
+    let k = 0, best = Infinity;
+    for (let i = 0; i < plan.length; i += 2) { const d = Math.hypot(plan[i] - p.x, plan[i + 1] - p.y); if (d < best) { best = d; k = i; } }
+    let px = p.x, py = p.y, s = 0;
+    const AHEAD = 1.6, STEP = 0.1, CLEAR = 0.45;
+    for (let i = k; i + 1 < plan.length && s < AHEAD; i += 2) {
+      const ax = i === k ? px : plan[i], ay = i === k ? py : plan[i + 1];
+      const bx = plan[i + 2] ?? plan[i], by = plan[i + 3] ?? plan[i + 1];
+      const L = Math.hypot(bx - ax, by - ay);
+      for (let u = 0; u < L && s < AHEAD; u += STEP, s += STEP) {
+        if (s < 0.35) continue; // already in the lane: keep going and clear it
+        const x = ax + ((bx - ax) * u) / L, y = ay + ((by - ay) * u) / L;
+        const tau = s / v;
+        for (const e of walkers) {
+          const r = Math.max(0.2, e.radius) + CLEAR;
+          for (let dt = -1.0; dt <= 1.2; dt += 0.2) {
+            if (tau + dt < 0) continue;
+            const q = samplePath(e.mover!.path, t0 + tau + dt, e.mover!.loop !== false);
+            if (Math.hypot(q.x - x, q.y - y) < r) return true;
+          }
+        }
+      }
+      px = bx; py = by;
+    }
+    return false;
+  }
+
   private replan(p: Pose2) {
-    const polys = this.footprints();
+    const polys = this.footprints(true);
     let x0 = Math.min(p.x, this.goal.x) - 1.5, x1 = Math.max(p.x, this.goal.x) + 1.5;
     let y0 = Math.min(p.y, this.goal.y) - 1.5, y1 = Math.max(p.y, this.goal.y) + 1.5;
     for (const poly of polys) for (let k = 0; k < poly.length; k += 2) {
@@ -599,7 +643,7 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     buf[H_LAST_CONTACT_T] = last ? last.t : -1;
     buf[H_FELL_AT] = this.fellAt ?? -1;
     buf[H_GOAL_AT] = this.goalAt ?? -1;
-    buf[H_RESERVED] = 0;
+    buf[H_RESERVED] = this.yielding && this.status === 'running' ? 1 : 0; // planner waiting for a walker
     let o = HEADER;
     const vis = this.robotVisuals, vb = this.visBody;
     for (let i = 0; i < vis.length; i++) {

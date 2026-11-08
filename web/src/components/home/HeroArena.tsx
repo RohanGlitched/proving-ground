@@ -13,6 +13,8 @@ export function HeroArena() {
   useEffect(() => {
     let disposed = false;
     let cleanup: (() => void) | undefined;
+    // fetch the physics client alongside the hero so the worker can start loading MuJoCo sooner
+    import("@/sim/client").catch(() => undefined);
     import("@/three/hero").then(({ startHero }) => {
       if (disposed || !canvasRef.current) return;
       const h = startHero(canvasRef.current, setStatus);
@@ -55,7 +57,7 @@ export function HeroArena() {
         </div>
       </div>
       {status.phase === "result" && status.result && (
-        <div className="absolute right-6 top-16 sm:right-10 sm:top-20">
+        <div className="absolute right-6 top-28 sm:right-10 sm:top-24">
           <Stamp tone={status.result === "goal" ? "pass" : "fault"} animate rotate={-8} onDark className="text-[17px] !px-3 !py-1">
             {status.result === "goal" ? "Reached goal" : status.result === "fell" ? `Fell${status.on ? ` · ${status.on}` : ""}` : "Timed out"}
           </Stamp>
@@ -67,8 +69,8 @@ export function HeroArena() {
 
 function HeroReadout({ status }: { status: HeroStatus }) {
   return (
-    <div className="space-y-0.5 text-right">
-      <div>{status.object ? `OBJECT ${status.object.toUpperCase()}` : "OBJECT —"}</div>
+    <div className="space-y-0.5 text-right [&>div]:truncate">
+      <div title={status.object}>{status.object ? `OBJECT ${status.object.toUpperCase()}` : "OBJECT —"}</div>
       <div>
         {status.phase === "making"
           ? "LUX3D MATERIALIZING"

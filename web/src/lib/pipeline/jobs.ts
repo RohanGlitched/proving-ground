@@ -1,3 +1,4 @@
+import { TYPICAL_MAX_DIM } from "./sizes";
 import { randomBytes } from "node:crypto";
 import { isPreconditionFailed, store as defaultStore, updateJSON, type Store } from "../storage";
 import { AholoClient, AholoError, creditsFor, downloadOutput, humanError, isConcurrencyError, type CreateRequest, type Style, type Task, type Version } from "./aholo";
@@ -812,16 +813,18 @@ export async function startExport(objectId: string, format: ExportFormat, deps: 
  * scripts/library-reprocess.mjs). Articulated objects arrive as a URDF zip: links become parts, joints go
  * into parts.json, and the package itself is kept as objects/{id}/urdf.zip.
  */
-export async function processStored(job: Pick<Job, "id" | "kind" | "work">, s: Store): Promise<ProcessResult> {
+export async function processStored(job: Pick<Job, "id" | "kind" | "work"> & { input?: { slug?: string } }, s: Store): Promise<ProcessResult> {
   const id = job.id;
+  const fitMaxDim = job.input?.slug ? TYPICAL_MAX_DIM[job.input.slug] : undefined;
   const key = job.kind === "object" ? (job.work.splitKey ?? job.work.genKey!) : job.work.finalKey!;
   const g = await s.get(key);
   if (!g) throw new Error("A stored model file is missing.");
   let r: ProcessResult;
   if (job.kind === "articulated" && isZip(g.body)) {
     const a = await articulatedToGlb(g.body);
-    r = await processModel({ glb: a.glb, split: true, wholeGlb: job.work.genKey ? (await s.get(job.work.genKey))?.body : undefined });
-    r.parts.joints = a.joints;
+    r = await processModel({ glb: a.glb, split: true, wholeGlb: job.work.genKey ? (await s.get(job.work.genKey))?.body : undefined, fitMaxDim });
+    const k = r.stats.fitScale ?? 1;
+    r.parts.joints = a.joints.map((j) => ({ ...j, pivot: j.pivot.map((v) => Math.round(v * k * 1e4) / 1e4) as typeof j.pivot, ...(j.type === "prismatic" ? { lower: j.lower * k, upper: j.upper * k } : {}) }));
     r.partsJson = JSON.stringify(r.parts);
     r.stats.partsBytes = Buffer.byteLength(r.partsJson);
     await s.put(`objects/${id}/urdf.zip`, g.body, { contentType: "application/zip" });
@@ -833,6 +836,7 @@ export async function processStored(job: Pick<Job, "id" | "kind" | "work">, s: S
       animated: job.kind !== "object",
       inPlace: job.kind === "pedestrian" ? true : undefined,
       clipName: job.kind === "pedestrian" ? "Walk_Loop" : undefined,
+      fitMaxDim: job.kind === "object" ? fitMaxDim : undefined,
     });
   }
   await s.put(`objects/${id}/visual.glb`, r.visual, { contentType: "model/gltf-binary" });

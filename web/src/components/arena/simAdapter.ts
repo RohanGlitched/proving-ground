@@ -7,6 +7,8 @@ export type FrameHeader = {
   pelvis: [number, number, number];
   speed: number;
   contacts: number;
+  /** planner standing still to let a walker cross */
+  yielding?: boolean;
 };
 
 export interface ArenaSim {
@@ -26,6 +28,10 @@ export interface ArenaSim {
   /** replay trial `index` of the last runTrials in the live view, exactly */
   replay(index: number): Promise<TrialSummary["trials"][number] | null>;
   onPush(cb: (e: { t: number; force: number; angle: number }) => void): () => void;
+  /** shove the pelvis now (N, direction in the floor plane, radians) */
+  push(force: number, angle: number): void;
+  /** live sim speed (1 = real time; 0.3 = slow motion) */
+  setRate(rate: number): void;
   dispose(): void;
 }
 

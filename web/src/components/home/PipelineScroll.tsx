@@ -131,9 +131,14 @@ export function PipelineScroll() {
             label="CAM 02 · BENCH"
             className="h-full rounded-[4px]"
             right={
-              <span>
-                {parts != null ? `${parts} PARTS` : "LOADING"}
-                {size ? ` · ${size.toUpperCase()}` : ""}
+              <span className="flex flex-col items-end gap-0.5 sm:block">
+                <span>{parts != null ? `${parts} PARTS` : "LOADING"}</span>
+                {size && (
+                  <span>
+                    <span className="hidden sm:inline"> · </span>
+                    {size.toUpperCase()}
+                  </span>
+                )}
               </span>
             }
             bottomRight={<span>{SHOWCASE.prompt}</span>}

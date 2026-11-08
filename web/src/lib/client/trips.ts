@@ -2,6 +2,7 @@
 // Library objects are pre-tested (public/trip-index.json, scripts/sim-trips.mjs); anything else can be
 // tested live in the browser with the same settings.
 import { getPhysics } from "./api";
+import { defaultDensity } from "@/lib/density";
 
 export type TripResult = { n: number; passes: number; falls: number; timeouts: number; touched: number; live?: boolean };
 
@@ -20,17 +21,17 @@ export function verdict(t: TripResult): { label: string; tone: "pass" | "fault" 
   if (t.passes === t.n) return { label: `Cleared ${t.passes}/${t.n}`, tone: "pass" };
   if (t.falls >= t.n / 2) return { label: `Tripped ${t.falls}/${t.n}`, tone: "fault" };
   if (t.passes === 0 && t.timeouts >= t.n / 2) return { label: `Blocked ${t.timeouts}/${t.n}`, tone: "fault" };
-  return { label: `Cleared ${t.passes}/${t.n}`, tone: "ink" };
+  return { label: `${t.passes}/${t.n} got past`, tone: "ink" };
 }
 
 /** Run the same trip test live (trials worker). */
-export async function runTripTest(objectId: string, name: string): Promise<TripResult> {
+export async function runTripTest(objectId: string, name: string, slug?: string): Promise<TripResult> {
   const { createSim } = await import("@/sim/client");
   const sim = createSim();
   try {
     const ph = await getPhysics(objectId);
     const s = await sim.runTrials({
-      scene: { objects: [{ id: objectId, name, parts: ph.parts, x: 1.4, y: 0, yaw: 0.3, mass: ph.volume ? ph.volume * 400 : undefined }], goal: { x: 3.6, y: 0 }, start: { x: 0, y: 0, yaw: 0 } },
+      scene: { objects: [{ id: objectId, name, parts: ph.parts, x: 1.4, y: 0, yaw: 0.3, mass: ph.volume ? ph.volume * defaultDensity({ slug }) : undefined }], goal: { x: 3.6, y: 0 }, start: { x: 0, y: 0, yaw: 0 } },
       n: 10,
       seed: 11,
       mode: "blind",
