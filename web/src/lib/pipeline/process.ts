@@ -1,0 +1,392 @@
+import { Document, Logger, NodeIO, type Node as GNode, type mat4 } from "@gltf-transform/core";
+import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
+import { clearNodeParent, clearNodeTransform, dedup, getBounds, meshopt, prune, simplify, textureCompress, weld } from "@gltf-transform/functions";
+import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
+import sharp from "sharp";
+
+/**
+ * Turns Lux3D GLBs into what the app loads:
+ *
+ * (a) visual.glb: one mesh node per part, named part-0, part-1, … in the same order as parts.json (the UI
+ *     explodes the parts and wraps each in its physics hull, so visual part i is physics part i). Node
+ *     transforms are baked into the geometry and every part sits at the scene root. Welded, simplified to at
+ *     most 25k triangles in total, textures resized to ≤1024 px and converted to WebP (EXT_texture_webp),
+ *     and meshopt-compressed (EXT_meshopt_compression + KHR_mesh_quantization) for static objects. three.js
+ *     needs `loader.setMeshoptDecoder(MeshoptDecoder)` from three/examples/jsm/libs/meshopt_decoder.module.js.
+ *     Animated models (rigged pedestrians, articulated objects) keep their hierarchy and animations and skip
+ *     meshopt quantization.
+ * (b) parts.json for physics: per part a point cloud of at most 400 extreme points (the sim hulls it).
+ *
+ * Coordinates: Lux3D output is metric and Y-up, centred on the bounding-box centre; both files keep that
+ * frame unchanged (`up: "y"`, `unit: "m"`). Note that lux3d_metadata.bbox lists the extents in Z-up order,
+ * so the bbox recorded here is measured from the geometry instead.
+ */
+
+export const LIMITS = { maxTris: 25_000, maxPartPoints: 400, targetBytes: 1_500_000, maxTexture: 1024 };
+
+export type BBox = { min: [number, number, number]; max: [number, number, number] };
+export type Part = { name: string; count: number; points: number[]; bbox: BBox; centroid: [number, number, number] };
+export type PartsDoc = {
+  version: 1;
+  up: "y";
+  unit: "m";
+  frame: string;
+  source: "part-split" | "whole";
+  bbox: BBox;
+  parts: Part[];
+  animated?: { clips: { name: string; duration: number }[]; inPlace?: boolean };
+};
+
+export type ProcessStats = {
+  inputBytes: number;
+  visualBytes: number;
+  partsBytes: number;
+  trisIn: number;
+  tris: number;
+  parts: number;
+  texture: number;
+  ms: number;
+};
+
+export type ProcessResult = { visual: Buffer; parts: PartsDoc; partsJson: string; stats: ProcessStats; lux3dMetadata?: unknown };
+
+let ioPromise: Promise<NodeIO> | null = null;
+export function gltfIO(): Promise<NodeIO> {
+  ioPromise ??= (async () => {
+    await Promise.all([MeshoptDecoder.ready, MeshoptEncoder.ready, MeshoptSimplifier.ready]);
+    return new NodeIO().setLogger(new Logger(Logger.Verbosity.WARN)).registerExtensions(ALL_EXTENSIONS).registerDependencies({
+      "meshopt.decoder": MeshoptDecoder,
+      "meshopt.encoder": MeshoptEncoder,
+    });
+  })();
+  return ioPromise;
+}
+
+const r4 = (v: number) => Math.round(v * 1e4) / 1e4;
+
+function meshNodes(doc: Document): GNode[] {
+  const out: GNode[] = [];
+  const scene = doc.getRoot().getDefaultScene() ?? doc.getRoot().listScenes()[0];
+  if (!scene) return out;
+  const walk = (n: GNode) => {
+    if (n.getMesh()) out.push(n);
+    n.listChildren().forEach(walk);
+  };
+  scene.listChildren().forEach(walk);
+  return out;
+}
+
+export function triangleCount(doc: Document): number {
+  let t = 0;
+  for (const m of doc.getRoot().listMeshes())
+    for (const p of m.listPrimitives()) {
+      const idx = p.getIndices();
+      const n = idx ? idx.getCount() : (p.getAttribute("POSITION")?.getCount() ?? 0);
+      if (p.getMode() === 4) t += Math.floor(n / 3);
+    }
+  return t;
+}
+
+/** World-space positions of one mesh node (node transform applied). */
+function nodePositions(node: GNode): Float64Array {
+  const m = node.getWorldMatrix() as unknown as number[];
+  const arrays: number[][] = [];
+  let total = 0;
+  for (const p of node.getMesh()!.listPrimitives()) {
+    const a = p.getAttribute("POSITION");
+    if (!a) continue;
+    const el = [0, 0, 0];
+    const pts: number[] = [];
+    for (let i = 0; i < a.getCount(); i++) {
+      a.getElement(i, el);
+      const [x, y, z] = el;
+      pts.push(m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14]);
+    }
+    arrays.push(pts);
+    total += pts.length;
+  }
+  const out = new Float64Array(total);
+  let o = 0;
+  for (const a of arrays) {
+    out.set(a, o);
+    o += a.length;
+  }
+  return out;
+}
+
+function bboxOf(p: ArrayLike<number>): BBox {
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < p.length; i += 3)
+    for (let k = 0; k < 3; k++) {
+      if (p[i + k] < min[k]) min[k] = p[i + k];
+      if (p[i + k] > max[k]) max[k] = p[i + k];
+    }
+  return { min: min.map(r4) as BBox["min"], max: max.map(r4) as BBox["max"] };
+}
+
+function uniquePoints(p: ArrayLike<number>): number[] {
+  const seen = new Set<string>();
+  const out: number[] = [];
+  for (let i = 0; i < p.length; i += 3) {
+    const x = r4(p[i]),
+      y = r4(p[i + 1]),
+      z = r4(p[i + 2]);
+    const k = `${x},${y},${z}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(x, y, z);
+  }
+  return out;
+}
+
+/**
+ * At most `max` points that keep the convex hull: the extreme point along each of ~3·max directions on a
+ * Fibonacci sphere (each is a hull vertex), thinned by farthest-point sampling when there are still too many.
+ */
+export function decimateForHull(points: number[], max = LIMITS.maxPartPoints): number[] {
+  const n = points.length / 3;
+  if (n <= max) return points;
+  const dirs = Math.max(64, max * 3);
+  const chosen = new Set<number>();
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let d = 0; d < dirs; d++) {
+    const y = 1 - (2 * (d + 0.5)) / dirs;
+    const r = Math.sqrt(1 - y * y);
+    const th = golden * d;
+    const dx = Math.cos(th) * r,
+      dz = Math.sin(th) * r;
+    let best = -Infinity,
+      bi = 0;
+    for (let i = 0; i < n; i++) {
+      const v = points[3 * i] * dx + points[3 * i + 1] * y + points[3 * i + 2] * dz;
+      if (v > best) {
+        best = v;
+        bi = i;
+      }
+    }
+    chosen.add(bi);
+  }
+  let idx = [...chosen];
+  if (idx.length > max) {
+    // farthest-point sampling within the extreme set
+    const keep = [idx[0]];
+    const dist = idx.map(() => Infinity);
+    for (let s = 1; s < max; s++) {
+      const last = keep[keep.length - 1];
+      let bj = -1,
+        bd = -1;
+      for (let j = 0; j < idx.length; j++) {
+        const i = idx[j];
+        const ddx = points[3 * i] - points[3 * last],
+          ddy = points[3 * i + 1] - points[3 * last + 1],
+          ddz = points[3 * i + 2] - points[3 * last + 2];
+        const dd = ddx * ddx + ddy * ddy + ddz * ddz;
+        if (dd < dist[j]) dist[j] = dd;
+        if (dist[j] > bd) {
+          bd = dist[j];
+          bj = j;
+        }
+      }
+      keep.push(idx[bj]);
+    }
+    idx = keep;
+  }
+  const out: number[] = [];
+  for (const i of idx) out.push(points[3 * i], points[3 * i + 1], points[3 * i + 2]);
+  return out;
+}
+
+function partFrom(name: string, raw: Float64Array): Part {
+  const uniq = uniquePoints(raw);
+  const pts = decimateForHull(uniq);
+  const c: [number, number, number] = [0, 0, 0];
+  const n = uniq.length / 3;
+  for (let i = 0; i < uniq.length; i += 3) {
+    c[0] += uniq[i] / n;
+    c[1] += uniq[i + 1] / n;
+    c[2] += uniq[i + 2] / n;
+  }
+  return { name, count: pts.length / 3, points: pts, bbox: bboxOf(uniq), centroid: c.map(r4) as Part["centroid"] };
+}
+
+/** A part is kept when it has at least 4 distinct points and is at least 2 mm across in two axes. */
+function usable(raw: Float64Array): boolean {
+  if (raw.length < 12) return false;
+  const b = bboxOf(raw);
+  const ext = [0, 1, 2].map((k) => b.max[k] - b.min[k]).sort((a, z) => z - a);
+  return ext[1] >= 0.002;
+}
+
+export type ProcessInput = {
+  /** The GLB the visual and parts are built from (part-split result when available, else the whole mesh). */
+  glb: Buffer;
+  /** true when `glb` is a part-split result (each mesh node is one part). */
+  split: boolean;
+  /** Animated models keep their hierarchy and skip quantization. */
+  animated?: boolean;
+  inPlace?: boolean;
+};
+
+export async function processModel(input: ProcessInput): Promise<ProcessResult> {
+  const t0 = Date.now();
+  const io = await gltfIO();
+  const doc = await io.readBinary(new Uint8Array(input.glb));
+  const root = doc.getRoot();
+  const lux3dMetadata = (root.getExtras() as Record<string, unknown>)?.lux3d_metadata;
+  const animated = input.animated || root.listAnimations().length > 0 || root.listSkins().length > 0;
+  const trisIn = triangleCount(doc);
+
+  // 1. parts, in scene order; unusable slivers are removed from both files
+  let nodes = meshNodes(doc);
+  for (const n of nodes) {
+    if (!usable(nodePositions(n))) {
+      n.getMesh()?.dispose();
+      n.dispose();
+    }
+  }
+  nodes = meshNodes(doc);
+  if (nodes.length === 0) throw new Error("The model has no usable geometry.");
+
+  const scene = root.getDefaultScene() ?? root.listScenes()[0];
+  let partList: Part[];
+  let source: PartsDoc["source"];
+  if (!animated) {
+    // bake transforms and move each part to the scene root (meshes are unshared after this)
+    for (const n of nodes) {
+      const mesh = n.getMesh()!;
+      if (mesh.listParents().filter((p) => p.propertyType === "Node").length > 1) n.setMesh(mesh.clone());
+      clearNodeParent(n);
+      clearNodeTransform(n);
+    }
+    for (const child of scene.listChildren()) if (!nodes.includes(child)) child.dispose();
+    nodes.forEach((n, i) => {
+      n.setName(`part-${i}`);
+      n.getMesh()!.setName(`part-${i}`);
+    });
+    if (input.split && nodes.length > 1) {
+      partList = nodes.map((n, i) => partFrom(`part-${i}`, nodePositions(n)));
+      source = "part-split";
+    } else {
+      // single part: one node holds the whole object
+      const all = nodes.map(nodePositions);
+      const merged = new Float64Array(all.reduce((s, a) => s + a.length, 0));
+      let o = 0;
+      for (const a of all) {
+        merged.set(a, o);
+        o += a.length;
+      }
+      partList = [partFrom("part-0", merged)];
+      source = "whole";
+      if (nodes.length > 1) {
+        // keep the visual consistent with one physics part: group meshes under one node "part-0"
+        const group = doc.createNode("part-0");
+        scene.addChild(group);
+        nodes.forEach((n, i) => {
+          n.setName(`part-0-mesh-${i}`);
+          group.addChild(n);
+        });
+      }
+    }
+  } else {
+    const all = nodes.map(nodePositions);
+    const merged = new Float64Array(all.reduce((s, a) => s + a.length, 0));
+    let o = 0;
+    for (const a of all) {
+      merged.set(a, o);
+      o += a.length;
+    }
+    partList = [partFrom("part-0", merged)];
+    source = "whole";
+    nodes.forEach((n, i) => n.setName(nodes.length === 1 ? "part-0" : `part-0-mesh-${i}`));
+  }
+
+  const b = getBounds(scene);
+  const bbox: BBox = { min: b.min.map(r4) as BBox["min"], max: b.max.map(r4) as BBox["max"] };
+  root.setExtras({ ...(root.getExtras() as object), provingGround: { up: "y", unit: "m", parts: partList.length } });
+
+  // 2. geometry: weld + simplify to the triangle budget
+  await doc.transform(weld());
+  let tris = triangleCount(doc);
+  if (tris > LIMITS.maxTris) {
+    for (const error of [0.002, 0.01, 0.03, 0.08]) {
+      await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: Math.min(1, (LIMITS.maxTris / tris) * 0.97), error, lockBorder: false }));
+      tris = triangleCount(doc);
+      if (tris <= LIMITS.maxTris) break;
+    }
+  }
+  await doc.transform(dedup(), prune({ keepLeaves: true, keepAttributes: false }));
+  const geometryOnly = await io.writeBinary(doc);
+
+  // 3. textures + compression, stepping down until the size target holds
+  let visual: Uint8Array | null = null;
+  let texture = 0;
+  for (const [size, quality] of [
+    [1024, 82],
+    [1024, 70],
+    [768, 70],
+    [512, 68],
+  ] as const) {
+    const d = await io.readBinary(geometryOnly);
+    await d.transform(textureCompress({ encoder: sharp, targetFormat: "webp", resize: [size, size], quality }));
+    if (!animated) await d.transform(meshopt({ encoder: MeshoptEncoder, level: "medium", quantizationVolume: "scene" }));
+    visual = await io.writeBinary(d);
+    texture = size;
+    if (visual.byteLength <= LIMITS.targetBytes) break;
+  }
+
+  const parts: PartsDoc = {
+    version: 1,
+    up: "y",
+    unit: "m",
+    frame: "object frame: Y-up, metres, origin at the Lux3D bounding-box centre (same frame as visual.glb)",
+    source,
+    bbox,
+    parts: partList,
+  };
+  if (animated) {
+    parts.animated = { clips: root.listAnimations().map((a) => ({ name: a.getName(), duration: r4(animationDuration(a)) })), inPlace: input.inPlace };
+  }
+  const partsJson = JSON.stringify(parts);
+  return {
+    visual: Buffer.from(visual!),
+    parts,
+    partsJson,
+    lux3dMetadata,
+    stats: {
+      inputBytes: input.glb.length,
+      visualBytes: visual!.byteLength,
+      partsBytes: Buffer.byteLength(partsJson),
+      trisIn,
+      tris,
+      parts: partList.length,
+      texture,
+      ms: Date.now() - t0,
+    },
+  };
+}
+
+function animationDuration(a: import("@gltf-transform/core").Animation): number {
+  let max = 0;
+  for (const s of a.listSamplers()) {
+    const input = s.getInput();
+    if (!input) continue;
+    const mm = input.getMax([0]) as number[];
+    if (mm[0] > max) max = mm[0];
+  }
+  return max;
+}
+
+/** Bounding box (Y-up metres) and triangle count of a raw Lux3D GLB, used to decide on part-split. */
+export async function measureGlb(glb: Buffer): Promise<{ bbox: BBox; maxDim: number; tris: number; meshes: number; animated: boolean }> {
+  const io = await gltfIO();
+  const doc = await io.readBinary(new Uint8Array(glb));
+  const root = doc.getRoot();
+  const scene = root.getDefaultScene() ?? root.listScenes()[0];
+  const b = getBounds(scene);
+  const bbox: BBox = { min: b.min.map(r4) as BBox["min"], max: b.max.map(r4) as BBox["max"] };
+  const maxDim = Math.max(...[0, 1, 2].map((k) => bbox.max[k] - bbox.min[k]));
+  return { bbox, maxDim, tris: triangleCount(doc), meshes: meshNodes(doc).length, animated: root.listAnimations().length > 0 || root.listSkins().length > 0 };
+}
+
+export type { mat4 };
