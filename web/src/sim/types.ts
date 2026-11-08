@@ -77,7 +77,24 @@ export interface StepInfo {
   goalAt: number | null;
   /** Contacts that started during this call. */
   newContacts: ContactEvent[];
+  /** Pushes that started during this call. */
+  newPushes: PushEvent[];
   cmd: Command;
+}
+
+/** A horizontal shove on the pelvis. angle is the world-frame direction (rad, from +X toward +Y). */
+export interface PushEvent { t: number; force: number; angle: number; duration: number }
+
+/** An in-progress trial (Engine.beginTrial / advanceTrial). */
+export interface TrialRun {
+  options: TrialOptions;
+  index: number;
+  seed: number;
+  start: Pose2;
+  pushes: { t: number; force: number; angle: number }[];
+  total: number; // physics steps
+  path: number[];
+  result: TrialResult | null;
 }
 
 export interface JitterSpec {

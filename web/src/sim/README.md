@@ -35,7 +35,12 @@ const f = sim.latest();                  // call from rAF: { header, poses, layo
 sim.onContact(e => ...); sim.onStatus((s, t) => ...); sim.onPerf(p => ...);
 const plan = await sim.getPlan();        // flat xy (Z-up world) or null
 const summary = await sim.runTrials({ scene, n: 10, seed: 1, mode: 'planner', jitter, pushes, maxSeconds: 20 }, (done, n, r) => ...);
+const r = await sim.replayTrial(sameOptions, index, { tail: 1.5 }); // TrialResult, or null if interrupted
+sim.onPush(p => ...);                    // { t, force, angle (world rad from +X), duration }
+sim.onLayout(l => ...); sim.onReplay((phase, index, result) => ...);
 ```
+
+**Trial replay.** `replayTrial(options, index)` recompiles `options.scene` in the live worker, sets up trial `index` exactly as `runTrials(options)` does (seeded start and joint noise, object jitter, pushes at the same physics step with the same force and angle, same mode, speed, goal and `maxSeconds`) and plays it in real time through the normal frame stream with the usual status/contact events plus `push` events. It stops at the trial's end result, keeps showing `tail` seconds (default 1.5; none for a timeout), pauses, and resolves with the TrialResult. Both paths run `Engine.beginTrial` + `advanceTrial` (pushes are keyed by physics step, stepping stops exactly at the end event), so the result, time, fallPoint, path and contacts are bit-identical (tested with irregular chunk sizes, and checked in Chrome). Exact equality holds within one JS engine; Node and Chrome can differ in the last digits. `reset`, `setScene`, another replay or a live `runTrials` interrupts a replay (resolves null).
 
 `SceneObject`: `{ id, name?, parts, x, y, z?, yaw?, density?, mass?, fixed?, friction? }`. Fixed objects are mocap bodies (never move, still jitterable in trials). `MoverSpec`: `{ id, parts, path: [{x, y, yaw, t}], loop? }` → kinematic (mocap) body that follows the path and pushes the robot and objects. Objects whose parts are all < 1 cm keep a frame slot but are not simulated.
 
@@ -53,7 +58,7 @@ const summary = await sim.runTrials({ scene, n: 10, seed: 1, mode: 'planner', ji
 
 ## Worker protocol (`protocol.ts`)
 
-Requests carry an `id`; the worker answers `{type:'reply', id, ok, result|error}`. Requests: `init {base, role:'live'|'trials', shared}`, `setScene {scene, keepRobot}`, `reset {start?}`, `setMode`, `setCommand`, `setGoal`, `setSpeed`, `setRate`, `play`, `pause`, `push {force, angle, duration?}`, `getPlan`, `runTrials {options}`, `parseGlb {bytes, options}`. Events: `frame {buf}` (non-shared mode), `status {status, t}`, `contact {event}`, `trialProgress {id, done, n, result}`, `perf {realTimeFactor, stepsPerSecond}` every 2 s. The live worker paces 500 Hz physics to the wall clock (catch-up capped at 100 ms); trials and GLB parsing run in a second worker so the live view keeps going.
+Requests carry an `id`; the worker answers `{type:'reply', id, ok, result|error}`. Requests: `init {base, role:'live'|'trials', shared}`, `setScene {scene, keepRobot}`, `reset {start?}`, `setMode`, `setCommand`, `setGoal`, `setSpeed`, `setRate`, `play`, `pause`, `push {force, angle, duration?}`, `getPlan`, `runTrials {options}`, `parseGlb {bytes, options}`, `replayTrial {options, index, tail?}` (replies when the replay ends). Events: `frame {buf}` (non-shared mode), `status {status, t}` (t is the exact fall/goal time), `contact {event}`, `push {event}`, `layout {layout}`, `replay {phase, index, result}`, `trialProgress {id, done, n, result}`, `perf {realTimeFactor, stepsPerSecond}` every 2 s. The live worker paces 500 Hz physics to the wall clock (catch-up capped at 100 ms); trials and GLB parsing run in a second worker so the live view keeps going.
 
 Next 16 notes: the worker is `new Worker(new URL('./worker.ts', import.meta.url), {type:'module'})`. Turbopack rewrites `import.meta.url` in the worker to `file:///ROOT/...` and the worker runs from a `blob:` URL, so the wasm URL (emitted via `new URL('../../node_modules/@mujoco/mujoco/mujoco.wasm', import.meta.url)`) is resolved against the page origin and passed with `locateFile`; the asset base is made absolute in the client. `next.config.ts` aliases `module` to `empty-module.ts` for browser bundles (mujoco.js imports it in its Node-only branch).
 
@@ -82,7 +87,7 @@ Obstacle behaviour (blind, 1.5 m ahead, 10 trials): chair (4.9 kg) and light box
 
 ## Tests
 
-`npm --prefix web run test:sim` (node:test via tsx; use Node 24). All 12 pass: parity (a), chair blind contact + planner 10/10 goals with no chair contact (b), 20 × 6 compile 205–350 ms with the test files running in parallel (c), determinism (d), chair 0.48 × 0.45 × 0.85 m and 4.9 kg (e), movers, fixed objects, frame layout, keepRobot recompile, `toMJCF` compiles with the right mass.
+`npm --prefix web run test:sim` (node:test via tsx; use Node 24). All 13 pass: parity (a), chair blind contact + planner 10/10 goals with no chair contact (b), 20 × 6 compile 205–350 ms with the test files running in parallel (c), determinism (d), chair 0.48 × 0.45 × 0.85 m and 4.9 kg (e), movers, fixed objects, frame layout, keepRobot recompile, `toMJCF` compiles with the right mass, replay equals runTrials for fell/goal/timeout trials with pushes.
 
 ## Limits
 

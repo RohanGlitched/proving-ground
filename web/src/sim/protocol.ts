@@ -1,6 +1,6 @@
 // Message protocol between the UI thread (client.ts) and the sim worker (worker.ts).
 import type { GlbOptions } from './assets';
-import type { Command, ContactEvent, FrameLayout, NavMode, Pose2, RobotStatus, RobotVisual, SceneSpec, TrialOptions, TrialResult, TrialSummary } from './types';
+import type { Command, ContactEvent, FrameLayout, NavMode, Pose2, PushEvent, RobotStatus, RobotVisual, SceneSpec, TrialOptions, TrialResult, TrialSummary } from './types';
 
 /** Max poses a frame slot can hold (robot visual geoms + objects + movers). */
 export const MAX_POSES = 512;
@@ -19,7 +19,8 @@ export type Request =
   | { type: 'push'; id: number; force: number; angle: number; duration?: number }
   | { type: 'getPlan'; id: number }
   | { type: 'runTrials'; id: number; options: TrialOptions }
-  | { type: 'parseGlb'; id: number; bytes: ArrayBuffer; options?: GlbOptions };
+  | { type: 'parseGlb'; id: number; bytes: ArrayBuffer; options?: GlbOptions }
+  | { type: 'replayTrial'; id: number; options: TrialOptions; index: number; tail?: number };
 
 export interface InitResult {
   loadMs: number;
@@ -43,6 +44,9 @@ export type WorkerEvent =
   | { type: 'status'; status: RobotStatus; t: number }
   | { type: 'contact'; event: ContactEvent }
   | { type: 'trialProgress'; id: number; done: number; n: number; result: TrialResult }
-  | { type: 'perf'; realTimeFactor: number; stepsPerSecond: number };
+  | { type: 'perf'; realTimeFactor: number; stepsPerSecond: number }
+  | { type: 'push'; event: PushEvent }
+  | { type: 'layout'; layout: FrameLayout }
+  | { type: 'replay'; phase: 'start' | 'end'; index: number; result: TrialResult | null };
 
 export type { TrialSummary };

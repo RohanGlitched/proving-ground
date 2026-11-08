@@ -12,7 +12,7 @@ import {
   H_PELVIS_X, H_PELVIS_Y, H_PELVIS_Z, H_ROBOT_YAW, H_SEQ, H_STATUS, H_TIME, H_VX, H_VY, H_YAW, H_FALLEN,
 } from './frame';
 import type { InitResult, Request, SceneResult, WorkerEvent } from './protocol';
-import type { Command, ContactEvent, FrameLayout, NavMode, Pose2, RobotStatus, RobotVisual, SceneSpec, TrialOptions, TrialResult, TrialSummary } from './types';
+import type { Command, ContactEvent, FrameLayout, NavMode, Pose2, PushEvent, RobotStatus, RobotVisual, SceneSpec, TrialOptions, TrialResult, TrialSummary } from './types';
 
 import type { GlbOptions, ObjectAsset } from './assets';
 
@@ -73,6 +73,19 @@ export interface SimClient {
   onPerf(cb: (p: { realTimeFactor: number; stepsPerSecond: number }) => void): () => void;
   /** Runs trials in a separate worker so the live view keeps running. */
   runTrials(options: TrialOptions, onProgress?: (done: number, n: number, r: TrialResult) => void): Promise<TrialSummary>;
+  /**
+   * Replays trial `index` of runTrials(options) in the live view, in real time through the normal frame
+   * stream, then pauses 1.5 s (tail) after the end result. Bit-identical to the trials worker: same
+   * result, time and fallPoint. Resolves with that TrialResult, or null if interrupted (reset, setScene,
+   * another replay or live runTrials). Recompiles the scene, so the layout may change (see onLayout).
+   */
+  replayTrial(options: TrialOptions, index: number, opts?: { tail?: number }): Promise<TrialResult | null>;
+  /** Pelvis shoves as they start (trial pushes during a replay, or push() calls). */
+  onPush(cb: (e: PushEvent) => void): () => void;
+  /** Frame layout changes (setScene, replayTrial). client.layout is already updated when this fires. */
+  onLayout(cb: (layout: FrameLayout) => void): () => void;
+  /** Replay start/end notifications. */
+  onReplay(cb: (phase: 'start' | 'end', index: number, result: TrialResult | null) => void): () => void;
   /** GLB bytes -> collision parts (Z-up), off the main thread (in the trials worker). The buffer is transferred. */
   parseGlb(bytes: ArrayBuffer, options?: GlbOptions): Promise<ObjectAsset>;
   dispose(): void;
@@ -156,6 +169,9 @@ export function createSim(opts: SimOptions = {}): SimClient {
   const contactCbs = new Set<(e: ContactEvent) => void>();
   const statusCbs = new Set<(s: RobotStatus, t: number) => void>();
   const perfCbs = new Set<(p: { realTimeFactor: number; stepsPerSecond: number }) => void>();
+  const pushCbs = new Set<(e: PushEvent) => void>();
+  const layoutCbs = new Set<(l: FrameLayout) => void>();
+  const replayCbs = new Set<(phase: 'start' | 'end', index: number, result: TrialResult | null) => void>();
   let lastBuf: Float32Array | null = null;
   let lastSeq = -1;
   let frame: Frame | null = null;
@@ -166,6 +182,9 @@ export function createSim(opts: SimOptions = {}): SimClient {
     else if (m.type === 'contact') contactCbs.forEach((cb) => cb(m.event));
     else if (m.type === 'status') statusCbs.forEach((cb) => cb(m.status, m.t));
     else if (m.type === 'perf') perfCbs.forEach((cb) => cb(m));
+    else if (m.type === 'push') pushCbs.forEach((cb) => cb(m.event));
+    else if (m.type === 'layout') { client.layout = m.layout; layoutCbs.forEach((cb) => cb(m.layout)); }
+    else if (m.type === 'replay') replayCbs.forEach((cb) => cb(m.phase, m.index, m.result));
   });
   let trialsRpc: Rpc | null = null;
   let trialsReady: Promise<unknown> | null = null;
@@ -225,6 +244,13 @@ export function createSim(opts: SimOptions = {}): SimClient {
     onContact(cb) { contactCbs.add(cb); return () => contactCbs.delete(cb); },
     onStatus(cb) { statusCbs.add(cb); return () => statusCbs.delete(cb); },
     onPerf(cb) { perfCbs.add(cb); return () => perfCbs.delete(cb); },
+    onPush(cb) { pushCbs.add(cb); return () => pushCbs.delete(cb); },
+    onLayout(cb) { layoutCbs.add(cb); return () => layoutCbs.delete(cb); },
+    onReplay(cb) { replayCbs.add(cb); return () => replayCbs.delete(cb); },
+    async replayTrial(options, index, o = {}) {
+      await client.ready;
+      return rpc.call<TrialResult | null>({ type: 'replayTrial', options, index, tail: o.tail });
+    },
     async runTrials(options, onProgress) {
       const t = await trials();
       return t.call<TrialSummary>({ type: 'runTrials', options }, onProgress);

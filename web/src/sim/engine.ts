@@ -10,8 +10,8 @@ import {
 import { Rng, mixSeed } from './rng';
 import { parseRobotVisuals, physicsXml, type RobotAssets } from './robot';
 import type {
-  CollisionPart, Command, ContactEvent, FrameLayout, MoverSpec, NavMode, Pose2, RobotStatus, RobotVisual, SceneObject,
-  SceneSpec, StepInfo, TrialOptions, TrialResult, TrialSummary,
+  CollisionPart, Command, ContactEvent, FrameLayout, MoverSpec, NavMode, Pose2, PushEvent, RobotStatus, RobotVisual, SceneObject,
+  SceneSpec, StepInfo, TrialOptions, TrialResult, TrialRun, TrialSummary,
 } from './types';
 
 export * from './types';
@@ -141,7 +141,9 @@ export class Engine {
   private forceBuf: { GetView(): Float64Array; delete(): void } | null = null;
 
   // pushes
-  private pushes: { t0: number; t1: number; fx: number; fy: number }[] = [];
+  /** Pelvis pushes keyed by physics step index [s0, s1). Scheduled trial pushes use the same path. */
+  private pushes: { s0: number; s1: number; fx: number; fy: number; ev: PushEvent }[] = [];
+  private newPushes: PushEvent[] = [];
   private seq = 0;
   lastCompileMs = 0;
 
@@ -361,8 +363,13 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
 
   /** Applies a horizontal force to the pelvis for `duration` seconds starting now. */
   push(force: number, angle: number, duration = 0.2) {
-    const t = this.time;
-    this.pushes.push({ t0: t, t1: t + duration, fx: force * Math.cos(angle), fy: force * Math.sin(angle) });
+    this.schedulePush(this.robotStep, force, angle, duration);
+  }
+
+  /** Schedules a pelvis push starting at physics step s0 (time s0 * DT). */
+  schedulePush(s0: number, force: number, angle: number, duration = 0.2) {
+    const ev: PushEvent = { t: s0 * DT, force, angle, duration };
+    this.pushes.push({ s0, s1: s0 + Math.max(1, Math.round(duration / DT)), fx: force * Math.cos(angle), fy: force * Math.sin(angle), ev });
   }
 
   /** Robot pelvis pose in the plane. */
@@ -386,17 +393,21 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
   }
 
   /** Advances n physics steps (500 Hz). The policy and navigator run every 10th step (50 Hz). */
-  step(n: number): StepInfo {
+  step(n: number, stopWhenDone = false): StepInfo {
     const mj = this.mujoco, model = this.model!, data = this.data!;
     this.newContacts = [];
+    this.newPushes = [];
     let qpos = data.qpos as Float64Array, qvel = data.qvel as Float64Array, ctrl = data.ctrl as Float64Array, xfrc = data.xfrc_applied as Float64Array;
     const pel = this.pelvisId * 6;
     const hasMovers = this.entities.some((e) => e.mover);
     for (let s = 0; s < n; s++) {
       if (hasMovers) this.updateMovers((this.robotStep + 1) * DT);
-      const t = this.robotStep * DT;
+      const k = this.robotStep;
       xfrc[pel] = 0; xfrc[pel + 1] = 0; xfrc[pel + 2] = 0; xfrc[pel + 3] = 0; xfrc[pel + 4] = 0; xfrc[pel + 5] = 0;
-      for (const p of this.pushes) if (t >= p.t0 && t < p.t1) { xfrc[pel] += p.fx; xfrc[pel + 1] += p.fy; }
+      for (const p of this.pushes) {
+        if (k === p.s0) this.newPushes.push(p.ev);
+        if (k >= p.s0 && k < p.s1) { xfrc[pel] += p.fx; xfrc[pel + 1] += p.fy; }
+      }
       const tgt = this.tgt;
       for (let j = 0; j < 12; j++) ctrl[j] = (tgt[j] - qpos[7 + j]) * KP[j] - qvel[6 + j] * KD[j];
       mj.mj_step(model, data);
@@ -419,9 +430,10 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
           this.goalAt = this.robotStep * DT;
         }
       }
+      if (stopWhenDone && this.status !== 'running') break;
     }
-    if (this.pushes.length && this.pushes.every((p) => p.t1 <= this.time)) this.pushes = [];
-    return { t: this.time, status: this.status, fellAt: this.fellAt, goalAt: this.goalAt, newContacts: this.newContacts, cmd: { ...this.cmd } };
+    if (this.pushes.length && this.pushes.every((p) => p.s1 <= this.robotStep)) this.pushes = [];
+    return { t: this.time, status: this.status, fellAt: this.fellAt, goalAt: this.goalAt, newContacts: this.newContacts, newPushes: this.newPushes, cmd: { ...this.cmd } };
   }
 
   private policyTick(qpos: Float64Array, qvel: Float64Array) {
@@ -614,73 +626,97 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
   }
 
   /**
+   * Sets up trial `index` of `o` on the current model: seeded start/joint/object jitter, scheduled pushes,
+   * mode, speed and goal. The scene must already be compiled from o.scene (runTrials and the replay do it).
+   * Advance it with advanceTrial(); runTrials and the live replay share this path, so they are bit-identical.
+   */
+  beginTrial(o: TrialOptions, index: number): TrialRun {
+    const maxSeconds = o.maxSeconds ?? 20;
+    const J = { startPos: 0.1, startYaw: (10 * Math.PI) / 180, objectPos: 0, objectYaw: 0, ...(o.jitter ?? {}) };
+    const base = o.scene.start ?? { x: 0, y: 0, yaw: 0 };
+    const seed = mixSeed(o.seed, index);
+    const rng = new Rng(seed);
+    const start = { x: base.x + rng.uniform(-J.startPos, J.startPos), y: base.y + rng.uniform(-J.startPos, J.startPos), yaw: base.yaw + rng.uniform(-J.startYaw, J.startYaw) };
+    const noise = Array.from({ length: 12 }, () => rng.normal(0, 0.01));
+    const objectJitter: Record<string, { dx: number; dy: number; dyaw: number }> = {};
+    for (const ob of o.scene.objects) objectJitter[ob.id] = { dx: rng.uniform(-J.objectPos, J.objectPos), dy: rng.uniform(-J.objectPos, J.objectPos), dyaw: rng.uniform(-J.objectYaw, J.objectYaw) };
+    const pushes: { t: number; force: number; angle: number }[] = [];
+    if (o.pushes) {
+      const count = o.pushes.count ?? 1;
+      for (let k = 0; k < count; k++) pushes.push({ t: rng.uniform(1, Math.max(1.5, maxSeconds - 2)), force: o.pushes.force ?? 120, angle: rng.uniform(0, 2 * Math.PI) });
+      pushes.sort((a, b) => a.t - b.t);
+    }
+    this.goal = { ...(o.scene.goal ?? { x: 4, y: 0 }) };
+    this.reset({ start, noise, objectJitter });
+    this.mode = o.mode;
+    this.nav.speed = o.speed ?? 0.5;
+    this.stopAtGoal = true;
+    for (const p of pushes) this.schedulePush(Math.round(p.t / DT), p.force, p.angle, o.pushes?.duration ?? 0.2);
+    return { options: o, index, seed, start, pushes, total: Math.round(maxSeconds / DT), path: [start.x, start.y], result: null };
+  }
+
+  /**
+   * Advances a trial by at most maxSteps physics steps (stopping exactly at a fall, the goal or the time limit).
+   * Returns the StepInfo of the last chunk; run.result is set once the trial is over.
+   */
+  advanceTrial(run: TrialRun, maxSteps = Infinity): StepInfo {
+    const CHUNK = 250; // 0.5 s => 2 Hz path samples
+    let left = maxSteps;
+    let info: StepInfo = { t: this.time, status: this.status, fellAt: this.fellAt, goalAt: this.goalAt, newContacts: [], newPushes: [], cmd: { ...this.cmd } };
+    const contacts: ContactEvent[] = [], pushes: PushEvent[] = [];
+    while (!run.result && left > 0) {
+      if (this.robotStep >= run.total || this.status !== 'running') { run.result = this.trialResult(run); break; }
+      const k = Math.min(left, CHUNK - (this.robotStep % CHUNK), run.total - this.robotStep);
+      info = this.step(k, true);
+      contacts.push(...info.newContacts);
+      pushes.push(...info.newPushes);
+      left -= k;
+      if (this.robotStep % CHUNK === 0 && this.status === 'running') { const p = this.robotPose(); run.path.push(p.x, p.y); }
+      if (this.robotStep >= run.total || this.status !== 'running') run.result = this.trialResult(run);
+    }
+    info.newContacts = contacts;
+    info.newPushes = pushes;
+    return info;
+  }
+
+  private trialResult(run: TrialRun): TrialResult {
+    const pose = this.robotPose();
+    const path = run.path.slice();
+    if (path[path.length - 2] !== pose.x || path[path.length - 1] !== pose.y) path.push(pose.x, pose.y);
+    const result: TrialResult['result'] = this.status === 'goal' ? 'goal' : this.status === 'fell' ? 'fell' : 'timeout';
+    const time = this.status === 'goal' ? this.goalAt! : this.status === 'fell' ? this.fellAt! : this.time;
+    const fellAt = this.fellAt;
+    const cause = fellAt !== null ? [...this.contacts].reverse().find((c) => c.t <= fellAt + 0.05 && c.t >= fellAt - 1.5) : undefined;
+    return {
+      index: run.index, seed: run.seed, result, time,
+      fallPoint: this.status === 'fell' ? [pose.x, pose.y] : null,
+      firstContactObject: this.contacts[0]?.entityId ?? null,
+      fallCause: cause?.entityId ?? (fellAt !== null ? this.lastTouchBefore(fellAt) : null),
+      contacts: this.contacts.map((c) => ({ ...c })),
+      path: Float32Array.from(path), start: run.start, pushes: run.pushes,
+    };
+  }
+
+  /**
    * Runs n seeded trials of the scene. Deterministic per (scene, options). Compiles the scene once;
    * object jitter is applied to the spawn poses, so no recompiles happen between trials.
    */
   runTrials(o: TrialOptions, onProgress?: (done: number, r: TrialResult) => void): TrialSummary {
     const w0 = now();
     this.setScene(o.scene);
-    const maxSeconds = o.maxSeconds ?? 20;
-    const J = { startPos: 0.1, startYaw: (10 * Math.PI) / 180, objectPos: 0, objectYaw: 0, ...(o.jitter ?? {}) };
-    const savedMode = this.mode, savedSpeed = this.nav.speed;
-    this.mode = o.mode;
-    this.nav.speed = o.speed ?? 0.5;
-    const base = o.scene.start ?? { x: 0, y: 0, yaw: 0 };
+    const savedMode = this.mode, savedSpeed = this.nav.speed, savedGoal = { ...this.goal };
     const trials: TrialResult[] = [];
     let simSeconds = 0;
     for (let i = 0; i < o.n; i++) {
-      const seed = mixSeed(o.seed, i);
-      const rng = new Rng(seed);
-      const start = { x: base.x + rng.uniform(-J.startPos, J.startPos), y: base.y + rng.uniform(-J.startPos, J.startPos), yaw: base.yaw + rng.uniform(-J.startYaw, J.startYaw) };
-      const noise = Array.from({ length: 12 }, () => rng.normal(0, 0.01));
-      const objectJitter: Record<string, { dx: number; dy: number; dyaw: number }> = {};
-      for (const ob of o.scene.objects) objectJitter[ob.id] = { dx: rng.uniform(-J.objectPos, J.objectPos), dy: rng.uniform(-J.objectPos, J.objectPos), dyaw: rng.uniform(-J.objectYaw, J.objectYaw) };
-      const pushes: { t: number; force: number; angle: number }[] = [];
-      if (o.pushes) {
-        const count = o.pushes.count ?? 1;
-        for (let k = 0; k < count; k++) pushes.push({ t: rng.uniform(1, Math.max(1.5, maxSeconds - 2)), force: o.pushes.force ?? 120, angle: rng.uniform(0, 2 * Math.PI) });
-        pushes.sort((a, b) => a.t - b.t);
-      }
-      this.reset({ start, noise, objectJitter });
-      this.mode = o.mode;
-      const path: number[] = [start.x, start.y];
-      const total = Math.round(maxSeconds / DT);
-      let pi = 0;
-      const chunk = 250; // 0.5 s => 2 Hz path samples
-      while (this.robotStep < total && this.status === 'running') {
-        while (pi < pushes.length && pushes[pi].t <= this.time + chunk * DT) {
-          // schedule exactly: step to the push time first
-          const k = Math.max(0, Math.round((pushes[pi].t - this.time) / DT));
-          if (k > 0) this.step(k);
-          if (this.status !== 'running') break;
-          this.push(pushes[pi].force, pushes[pi].angle, o.pushes?.duration ?? 0.2);
-          pi++;
-        }
-        if (this.status !== 'running') break;
-        const k = chunk - (this.robotStep % chunk);
-        this.step(Math.min(k, total - this.robotStep));
-        if (this.robotStep % chunk === 0) { const p = this.robotPose(); path.push(p.x, p.y); }
-      }
-      const pose = this.robotPose();
-      if (path[path.length - 2] !== pose.x) path.push(pose.x, pose.y);
-      const result: TrialResult['result'] = this.status === 'goal' ? 'goal' : this.status === 'fell' ? 'fell' : 'timeout';
-      const time = this.status === 'goal' ? this.goalAt! : this.status === 'fell' ? this.fellAt! : this.time;
-      const fellAt = this.fellAt;
-      const cause = fellAt !== null ? [...this.contacts].reverse().find((c) => c.t <= fellAt + 0.05 && c.t >= fellAt - 1.5) : undefined;
-      const r: TrialResult = {
-        index: i, seed, result, time,
-        fallPoint: this.status === 'fell' ? [pose.x, pose.y] : null,
-        firstContactObject: this.contacts[0]?.entityId ?? null,
-        fallCause: cause?.entityId ?? (fellAt !== null ? this.lastTouchBefore(fellAt) : null),
-        contacts: this.contacts.map((c) => ({ ...c })),
-        path: Float32Array.from(path), start, pushes,
-      };
+      const run = this.beginTrial(o, i);
+      while (!run.result) this.advanceTrial(run);
       simSeconds += this.time;
-      trials.push(r);
-      onProgress?.(i + 1, r);
+      trials.push(run.result);
+      onProgress?.(i + 1, run.result);
     }
     this.mode = savedMode;
     this.nav.speed = savedSpeed;
+    this.goal = savedGoal;
     const goals = trials.filter((t) => t.result === 'goal');
     return {
       trials,

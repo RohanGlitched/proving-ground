@@ -7,6 +7,7 @@ import { Engine } from './engine';
 import { DT } from './policy';
 import { MAX_POSES, type InitResult, type Request, type SceneResult, type WorkerEvent } from './protocol';
 import { loadRobotAssets } from './robot';
+import type { TrialResult, TrialRun } from './types';
 
 declare const self: DedicatedWorkerGlobalScope;
 
@@ -24,6 +25,42 @@ let sharedCtl: Int32Array | null = null;
 let slot = 0;
 const SLOT = 20 + 7 * MAX_POSES;
 let perfSteps = 0, perfWall = 0, perfT0 = 0;
+
+/** Live replay of one trial: same code path as runTrials (Engine.beginTrial/advanceTrial). */
+interface Replay {
+  run: TrialRun;
+  tailLeft: number; // physics steps to keep showing after the end result
+  resolve: (r: TrialResult | null) => void;
+}
+let replay: Replay | null = null;
+
+function endReplay(result: TrialResult | null) {
+  if (!replay) return;
+  const r = replay;
+  replay = null;
+  post({ type: 'replay', phase: 'end', index: r.run.index, result });
+  r.resolve(result);
+}
+
+/** Runs n physics steps of whatever the live view is doing (free play or a replay). */
+function advance(n: number) {
+  const e = engine!;
+  if (!replay) { emitEvents(e.step(n)); return; }
+  if (!replay.run.result) {
+    emitEvents(e.advanceTrial(replay.run, n));
+    const res = replay.run.result as TrialResult | null;
+    if (res) {
+      // keep the crumple / arrival on screen for a moment; a timeout ends at once
+      if (res.result === 'timeout') replay.tailLeft = 0;
+      if (replay.tailLeft <= 0) { playing = false; publish(); endReplay(res); }
+    }
+    return;
+  }
+  const k = Math.min(n, replay.tailLeft);
+  if (k > 0) emitEvents(e.step(k));
+  replay.tailLeft -= k;
+  if (replay.tailLeft <= 0) { const r = replay.run.result; playing = false; publish(); endReplay(r); }
+}
 
 const post = (m: WorkerEvent, transfer?: Transferable[]) => self.postMessage(m, transfer ?? []);
 
@@ -43,9 +80,10 @@ function publish() {
 
 function emitEvents(info: ReturnType<Engine['step']>) {
   for (const c of info.newContacts) post({ type: 'contact', event: c });
+  for (const p of info.newPushes) post({ type: 'push', event: p });
   if (info.status !== lastStatus) {
     lastStatus = info.status;
-    post({ type: 'status', status: info.status, t: info.t });
+    post({ type: 'status', status: info.status, t: info.status === 'fell' ? info.fellAt ?? info.t : info.status === 'goal' ? info.goalAt ?? info.t : info.t });
   }
 }
 
@@ -59,7 +97,7 @@ function tick() {
   residual -= n;
   if (n > 0) {
     const w = performance.now();
-    emitEvents(engine.step(n));
+    advance(n);
     perfWall += performance.now() - w;
     perfSteps += n;
   }
@@ -109,12 +147,14 @@ async function handle(m: Request): Promise<unknown> {
     case 'setScene': {
       const count = (m.scene.objects?.length ?? 0) + (m.scene.movers?.length ?? 0);
       if (count + e.robotVisuals.length > MAX_POSES) throw new Error(`too many objects (max ${MAX_POSES - e.robotVisuals.length})`);
+      endReplay(null);
       const r = sceneResult(e.setScene(m.scene, { keepRobot: m.keepRobot }));
+      post({ type: 'layout', layout: e.layout });
       lastStatus = '';
       publish();
       return r;
     }
-    case 'reset': e.reset({ start: m.start }); lastStatus = ''; residual = 0; publish(); return null;
+    case 'reset': endReplay(null); e.reset({ start: m.start }); lastStatus = ''; residual = 0; publish(); return null;
     case 'setMode': e.setMode(m.mode); return null;
     case 'setCommand': e.setCommand(m.cmd); return null;
     case 'setGoal': e.setGoal(m.x, m.y); publish(); return null;
@@ -126,7 +166,28 @@ async function handle(m: Request): Promise<unknown> {
     case 'pause': playing = false; publish(); return null;
     case 'push': e.push(m.force, m.angle, m.duration); return null;
     case 'getPlan': return e.plan ? Float32Array.from(e.plan) : null;
+    case 'replayTrial': {
+      endReplay(null);
+      playing = false;
+      const before = JSON.stringify(e.layout);
+      e.setScene(m.options.scene);
+      if (JSON.stringify(e.layout) !== before) post({ type: 'layout', layout: e.layout });
+      const run = e.beginTrial(m.options, m.index);
+      lastStatus = '';
+      residual = 0;
+      publish();
+      post({ type: 'replay', phase: 'start', index: m.index, result: null });
+      const done = new Promise<TrialResult | null>((resolve) => {
+        replay = { run, tailLeft: Math.round((m.tail ?? 1.5) / DT), resolve };
+      });
+      playing = true;
+      lastWall = performance.now();
+      perfT0 = lastWall;
+      setTimeout(tick, 0);
+      return done;
+    }
     case 'runTrials': {
+      if (role === 'live') endReplay(null);
       const wasPlaying = playing;
       playing = false;
       const summary = e.runTrials(m.options, (done, result) => post({ type: 'trialProgress', id: m.id, done, n: m.options.n, result }));
