@@ -82,7 +82,7 @@ Obstacle behaviour (blind, 1.5 m ahead, 10 trials): chair (4.9 kg) and light box
 
 ## Tests
 
-`npm --prefix web run test:sim` (node:test via tsx; use Node 24). All 13 pass: parity (a), chair blind contact + planner 10/10 goals with no chair contact (b), 20 × 6 compile 205 ms (c), determinism (d), chair 0.48 × 0.45 × 0.85 m and 4.9 kg (e), movers, fixed objects, frame layout, keepRobot recompile, `toMJCF` compiles with the right mass.
+`npm --prefix web run test:sim` (node:test via tsx; use Node 24). All 12 pass: parity (a), chair blind contact + planner 10/10 goals with no chair contact (b), 20 × 6 compile 205–350 ms with the test files running in parallel (c), determinism (d), chair 0.48 × 0.45 × 0.85 m and 4.9 kg (e), movers, fixed objects, frame layout, keepRobot recompile, `toMJCF` compiles with the right mass.
 
 ## Limits
 
