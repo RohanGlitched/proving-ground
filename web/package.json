@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:sim": "node --import tsx --test tests/sim/"
   },
   "dependencies": {
     "@gltf-transform/core": "4.5.1",
