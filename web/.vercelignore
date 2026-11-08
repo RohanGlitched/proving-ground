@@ -1,0 +1,7 @@
+.data
+dev-samples
+public/dev
+.env*
+.next
+node_modules
+tests/**/*.glb

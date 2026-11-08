@@ -2,11 +2,11 @@
 // Scroll scrubs the materializer: each step of the Lux3D pipeline happens as you read about it.
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Stage } from "@/three/stage";
 import { Materializer, MATERIALIZE_SECONDS } from "@/three/materializer";
 import { CameraFrame } from "@/components/ui/CameraFrame";
-import { SHOWCASE } from "@/lib/samples";
+import { SHOWCASE, showcase } from "@/lib/samples";
+import { loadVisual } from "@/three/arenaView";
 
 const STEPS = [
   {
@@ -51,8 +51,10 @@ export function PipelineScroll() {
     let mat: Materializer | null = null;
     let base = 0;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    new GLTFLoader().load(SHOWCASE.visual, (g) => {
-      mat = new Materializer(g.scene);
+    showcase().then(async (sc) => {
+      if (!sc) return;
+      const scene = await loadVisual(sc.url);
+      mat = new Materializer(scene);
       base = -mat.bbox.min.y;
       mat.group.position.y = base;
       stage.scene.add(mat.group);
