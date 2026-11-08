@@ -20,4 +20,9 @@ export const FACTS = [
     label: "One kitchen chair",
     detail: "Lux3D part-split separated a generated chair into legs, seat and back: eight solids instead of one block.",
   },
+  {
+    value: "0 → 10",
+    label: "What a map is worth",
+    detail: "A Lux3D park bench across the path: the blind controller reaches the flag 0 of 10 times, the planner 10 of 10.",
+  },
 ] as const;

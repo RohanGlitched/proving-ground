@@ -102,7 +102,7 @@ export default function Home() {
         {/* MEASURED */}
         <section id="measured" className="mx-auto mt-28 max-w-[1400px] px-4 sm:px-6">
           <h2 className="placard-sm text-[31px] sm:text-[39px]">Measured, not claimed</h2>
-          <div className="mt-8 grid gap-px overflow-hidden rounded-[3px] bg-ink/15 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid gap-px overflow-hidden rounded-[3px] bg-ink/15 sm:grid-cols-2 lg:grid-cols-5">
             {FACTS.map((f) => (
               <div key={f.label} className="bg-paper p-6">
                 <div className="data text-[25px] text-ink sm:text-[31px]">{f.value}</div>
