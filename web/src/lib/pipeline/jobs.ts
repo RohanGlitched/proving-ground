@@ -147,7 +147,6 @@ export function defaultDeps(over: Partial<Deps> = {}): Deps {
 
 export const jobKey = (id: string) => `jobs/${id}.json`;
 export const QUEUE_KEY = "queue.json";
-const LUX_STAGES: StageName[] = ["generate", "part-split", "rig", "retarget", "articulate"];
 const MAX_CONCURRENCY_WAITS = 80;
 
 export function stagesFor(kind: Kind, source: Source, hasImage: boolean): Stage[] {
@@ -330,7 +329,7 @@ export async function advanceJob(id: string, over: Partial<Deps> = {}): Promise<
   const t0 = deps.now();
   let got = await getJob(id, s);
   if (!got) return null;
-  let { job } = got;
+  const { job } = got;
   if (terminal(job)) return job;
   if (job.lease && job.lease.until > deps.now()) return job; // someone else is working on it
 
