@@ -105,3 +105,8 @@
     display: none;
   }
 }
+
+.slide:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
