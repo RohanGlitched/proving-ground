@@ -4,21 +4,48 @@ import { CameraFrame } from "@/components/ui/CameraFrame";
 import { PHASE_COPY, type MaterializePhase } from "@/three/materializer";
 
 /** A bench camera for one object: replays its materialization (points, parts, hulls). */
-export function ObjectViewer({ url, label }: { url: string; label: string }) {
+export function ObjectViewer({ url, label, animated = false }: { url: string; label: string; animated?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const replay = useRef<() => void>(() => {});
   const [phase, setPhase] = useState<MaterializePhase | null>(null);
   const [err, setErr] = useState(false);
+  const [animNote, setAnimNote] = useState<string | null>(null);
 
   useEffect(() => {
     let dispose: (() => void) | undefined;
     let alive = true;
     (async () => {
-      const [{ Stage }, { Materializer }, { loadVisual }] = await Promise.all([import("@/three/stage"), import("@/three/materializer"), import("@/three/arenaView")]);
+      const [{ Stage }, { Materializer }, { loadVisual, loadAnimated }] = await Promise.all([import("@/three/stage"), import("@/three/materializer"), import("@/three/arenaView")]);
       if (!alive || !canvasRef.current) return;
       const stage = new Stage({ canvas: canvasRef.current, dark: true });
       dispose = () => stage.dispose();
       try {
+        if (animated) {
+          // Lux3D rig + walk cycle, or Lux3D articulation: play the clips, no build replay
+          const THREE = await import("three");
+          const { clone } = await import("three/examples/jsm/utils/SkeletonUtils.js");
+          const g = await loadAnimated(url);
+          if (!alive) return;
+          const body = clone(g.scene);
+          const box = new THREE.Box3().setFromObject(body);
+          const size = box.getSize(new THREE.Vector3());
+          body.position.y = -box.min.y;
+          stage.scene.add(body);
+          const mixer = new THREE.AnimationMixer(body);
+          g.animations.forEach((c) => mixer.clipAction(c).play());
+          const r = Math.max(size.x, size.y, size.z);
+          stage.camera.position.set(r * 1.2, r * 0.8, r * 1.6);
+          stage.controls?.target.set(0, size.y / 2, 0);
+          if (stage.controls) {
+            stage.controls.autoRotate = true;
+            stage.controls.autoRotateSpeed = 0.6;
+          }
+          setPhase(null);
+          setAnimNote(g.animations.length ? `Playing ${g.animations.map((c) => c.name || "clip").join(", ")}` : "No animation clip in this file");
+          stage.onFrame((dt) => mixer.update(dt));
+          stage.start();
+          return;
+        }
         const scene = await loadVisual(url);
         if (!alive) return;
         const mat = new Materializer(scene);
@@ -48,11 +75,13 @@ export function ObjectViewer({ url, label }: { url: string; label: string }) {
   }, [url]);
 
   return (
-    <CameraFrame label={`BENCH · ${label.toUpperCase()}`} className="h-full rounded-[4px]" bottomRight={<span>{phase ? PHASE_COPY[phase] : err ? "Could not load" : "Loading"}</span>}>
+    <CameraFrame label={`BENCH · ${label.toUpperCase()}`} className="h-full rounded-[4px]" bottomRight={<span>{animNote ?? (phase ? PHASE_COPY[phase] : err ? "Could not load" : "Loading")}</span>}>
       <canvas ref={canvasRef} className="block h-full w-full" aria-label={`3D view of ${label}`} />
-      <button onClick={() => replay.current()} className="absolute bottom-12 right-5 rounded-[8px] bg-white/90 px-3 py-1.5 text-[13px] font-semibold text-ink">
-        Replay the build
-      </button>
+      {!animated && (
+        <button onClick={() => replay.current()} className="absolute bottom-12 right-5 rounded-[8px] bg-white/90 px-3 py-1.5 text-[13px] font-semibold text-ink">
+          Replay the build
+        </button>
+      )}
     </CameraFrame>
   );
 }

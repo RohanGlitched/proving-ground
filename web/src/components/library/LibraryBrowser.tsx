@@ -174,7 +174,7 @@ export function LibraryBrowser() {
           <div className="max-h-[92svh] w-full overflow-y-auto bg-concrete md:max-w-5xl md:rounded-[4px]" onClick={(ev) => ev.stopPropagation()}>
             <div className="grid md:grid-cols-[1.4fr_1fr]">
               <div className="h-[46svh] p-3 md:h-[560px]">
-                <ObjectViewer url={objectUrl(open.id, "visual.glb")} label={open.name} />
+                <ObjectViewer url={objectUrl(open.id, "visual.glb")} label={open.name} animated={open.kind !== "object"} />
               </div>
               <div className="p-5 md:p-7">
                 <div className="flex items-start justify-between gap-3">
@@ -207,6 +207,13 @@ export function LibraryBrowser() {
                     {packing ? "Building the pack…" : "Download robot-ready pack"}
                   </button>
                 </div>
+                {open.kind !== "object" ? (
+                  <div className="sheet mt-5 p-4 text-[14px] text-ink-2">
+                    {open.kind === "pedestrian"
+                      ? "Made with Lux3D text-to-3D, then Lux3D rig and Lux3D retarget (Walk_Loop). In the arena it walks across the course as a moving obstacle that pushes the robot."
+                      : "Made with Lux3D text-to-3D, then Lux3D articulation from a sentence describing the motion. Shown here playing its articulation clip."}
+                  </div>
+                ) : (
                 <div className="sheet mt-5 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-[13px] font-semibold text-ink-3">Trip test · 10 blind walks, object 1.4 m ahead</div>
@@ -227,6 +234,7 @@ export function LibraryBrowser() {
                     </button>
                   )}
                 </div>
+                )}
                 <div className="mt-4">
                   <div className="text-[13px] font-semibold text-ink-3">Export with Lux3D</div>
                   <div className="mt-2 flex flex-wrap gap-2">
