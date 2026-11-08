@@ -155,8 +155,8 @@ export default function Home() {
               parts from part-split means a closer fit.
             </li>
             <li>
-              <strong className="text-ink">Masses are estimates.</strong> Lux3D predicts size, not weight. Mass is hull volume times a density for the
-              kind of object, shown on every object so you can change it.
+              <strong className="text-ink">Masses are estimates.</strong> Lux3D predicts size, not weight. Mass is the mesh volume times a density for
+              the kind of object, shown on every object so you can change it.
             </li>
             <li>
               <strong className="text-ink">One generation at a time.</strong> Lux3D runs one task per account, so new objects queue. The library is
