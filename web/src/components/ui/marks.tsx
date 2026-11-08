@@ -44,7 +44,7 @@ export function Stamp({
 }) {
   return (
     <span
-      className={`inline-block rounded-[4px] border-[2.5px] px-2 py-0.5 text-[13px] font-extrabold uppercase tracking-[0.08em] [font-stretch:115%] ${TONES[tone]} ${animate ? "stamp-in" : ""} ${className}`}
+      className={`inline-block rounded-[4px] border-[2.5px] px-2 py-0.5 text-[13px] font-extrabold uppercase tracking-[0.08em] [font-stretch:115%] [font-variation-settings:'wdth'_115] ${TONES[tone]} ${animate ? "stamp-in" : ""} ${className}`}
       style={{ transform: `rotate(${rotate}deg)`, ["--rot" as string]: `${rotate}deg`, mixBlendMode: onDark ? "normal" : "multiply", background: onDark ? "rgba(247,246,242,0.95)" : undefined, boxShadow: onDark ? "0 6px 24px rgba(0,0,0,0.45)" : undefined }}
     >
       {children}

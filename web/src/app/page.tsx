@@ -21,8 +21,8 @@ export default function Home() {
 
         {/* What this is, in one breath */}
         <section className="mx-auto grid max-w-[1400px] gap-10 px-4 pt-16 sm:px-6 md:grid-cols-12 md:pt-24">
-          <div className="md:col-span-7">
-            <h2 className="placard text-[31px] sm:text-[39px] md:text-[49px]">
+          <div className="min-w-0 md:col-span-7">
+            <h2 className="placard text-[28px] sm:text-[39px] md:text-[49px]">
               Every object here was made by Lux3D. The robot has never seen any of them.
             </h2>
           </div>
@@ -116,7 +116,7 @@ export default function Home() {
         {/* FOR ROBOTICS TEAMS */}
         <section id="teams" className="mx-auto mt-28 max-w-[1400px] px-4 sm:px-6">
           <div className="sheet grid gap-8 p-6 sm:p-10 md:grid-cols-12">
-            <div className="md:col-span-6">
+            <div className="min-w-0 md:col-span-6">
               <div className="flex items-center gap-3">
                 <Target size={28} />
                 <Stamp tone="route" rotate={-3}>
@@ -129,7 +129,7 @@ export default function Home() {
                 directly: the textured mesh, one convex hull per part, the masses, and an MJCF snippet you can include in a MuJoCo scene.
               </p>
             </div>
-            <div className="md:col-span-6">
+            <div className="min-w-0 md:col-span-6">
               <pre className="data overflow-x-auto rounded-[3px] bg-ink p-5 text-[12.5px] leading-[1.7] text-white/85">{`kitchen-chair-robot-pack.zip
   visual.glb                     textured, metric, Y-up
   meshes/kitchen-chair_part0.stl convex hull, metres, Z-up

@@ -40,8 +40,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${archivo.variable} ${mono.variable} antialiased`}>{children}</body>
+    <html lang="en" className={`${archivo.variable} ${mono.variable}`}>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

@@ -68,12 +68,14 @@ body {
 /* placard headlines: Archivo expanded */
 .placard {
   font-stretch: 125%;
+  font-variation-settings: "wdth" 125;
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.05;
 }
 .placard-sm {
   font-stretch: 112%;
+  font-variation-settings: "wdth" 112;
   font-weight: 650;
   letter-spacing: -0.005em;
   line-height: 1.15;
@@ -145,4 +147,19 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .stamp-in, .rec-dot { animation: none; }
   html { scroll-behavior: auto; }
+}
+
+/* expanded placards are too wide for phones: narrower width axis, still the same voice */
+@media (max-width: 640px) {
+  .placard {
+    font-stretch: 106%;
+    font-variation-settings: "wdth" 106;
+  }
+  .placard-sm {
+    font-stretch: 100%;
+    font-variation-settings: "wdth" 100;
+  }
+  h1, h2 {
+    overflow-wrap: break-word;
+  }
 }

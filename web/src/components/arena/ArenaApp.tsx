@@ -482,7 +482,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     <div className="flex min-h-[100svh] flex-col bg-concrete md:h-[100svh]">
       {/* top bar */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-ink/10 px-3 sm:px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold [font-stretch:118%]" aria-label="Proving Ground home">
+        <Link href="/" className="flex items-center gap-2 font-bold [font-stretch:118%] [font-variation-settings:'wdth'_118]" aria-label="Proving Ground home">
           <Target size={22} />
           <span className="hidden sm:inline">Proving Ground</span>
         </Link>

@@ -42,7 +42,7 @@ export function SnapApp({ code }: { code: string }) {
 
   return (
     <main className="mx-auto flex min-h-[100svh] max-w-md flex-col px-4 py-6">
-      <div className="flex items-center gap-2 font-bold [font-stretch:118%]">
+      <div className="flex items-center gap-2 font-bold [font-stretch:118%] [font-variation-settings:'wdth'_118]">
         <Target size={22} /> Proving Ground
         <span className="data ml-auto rounded-[6px] bg-ink px-2 py-1 text-[12px] text-white">ROOM {code}</span>
       </div>

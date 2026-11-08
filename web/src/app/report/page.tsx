@@ -15,7 +15,7 @@ function Slide({ n, title, kicker, children, dark = false }: { n: number; title?
   return (
     <section className={`slide ${dark ? "slide-dark" : ""}`}>
       <header className="slide-head">
-        <span className="flex items-center gap-2 font-bold [font-stretch:118%]">
+        <span className="flex items-center gap-2 font-bold [font-stretch:118%] [font-variation-settings:'wdth'_118]">
           <Target size={20} /> Proving Ground
         </span>
         {kicker && <span className="slide-kicker">{kicker}</span>}
@@ -39,7 +39,7 @@ export default function ReportPage() {
       <section className="slide slide-dark cover">
         <Img src="hero.png" alt="The robot walking into Lux3D objects in the live arena" className="cover-img" />
         <div className="cover-text">
-          <div className="flex items-center gap-3 text-[22px] font-bold [font-stretch:118%]">
+          <div className="flex items-center gap-3 text-[22px] font-bold [font-stretch:118%] [font-variation-settings:'wdth'_118]">
             <Target size={34} /> Proving Ground
           </div>
           <h1 className="placard mt-6 text-[64px] leading-[1.02]">Make anything.<br />Watch a real robot deal with it.</h1>

@@ -15,7 +15,7 @@ export function Nav({ tone = "light" }: { tone?: "light" | "dark" }) {
       className={`sticky top-0 z-40 border-b backdrop-blur-md ${dark ? "border-white/10 bg-cam/80 text-white" : "border-ink/10 bg-concrete/85 text-ink"}`}
     >
       <nav className="mx-auto flex h-14 max-w-[1400px] items-center gap-6 px-4 sm:px-6" aria-label="Main">
-        <Link href="/" className="flex items-center gap-2.5 font-bold [font-stretch:118%]">
+        <Link href="/" className="flex items-center gap-2.5 font-bold [font-stretch:118%] [font-variation-settings:'wdth'_118]">
           <Target size={22} />
           <span>Proving Ground</span>
         </Link>

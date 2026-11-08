@@ -84,7 +84,7 @@ export default function HowPage() {
           </div>
         </aside>
 
-        <article className="md:col-span-9 lg:col-span-8">
+        <article className="min-w-0 md:col-span-9 lg:col-span-8">
           <h1 className="placard text-[39px] sm:text-[49px]">How a sentence becomes a test for a robot</h1>
           <p className="mt-5 max-w-[60ch] text-[18px] leading-[1.7] text-ink-2">
             Proving Ground chains Aholo&apos;s Lux3D models into a physics pipeline and puts a real robot controller at the end of it. Everything

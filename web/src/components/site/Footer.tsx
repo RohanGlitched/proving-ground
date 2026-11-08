@@ -9,7 +9,7 @@ export function Footer() {
       <div className="tape h-2" aria-hidden />
       <div className="mx-auto grid max-w-[1400px] gap-10 px-4 py-14 sm:px-6 md:grid-cols-12">
         <div className="md:col-span-4">
-          <div className="flex items-center gap-2.5 text-lg font-bold [font-stretch:118%]">
+          <div className="flex items-center gap-2.5 text-lg font-bold [font-stretch:118%] [font-variation-settings:'wdth'_118]">
             <Target size={26} /> Proving Ground
           </div>
           <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-white/70">
