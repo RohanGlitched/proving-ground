@@ -2,6 +2,7 @@
 // Make an object with Lux3D: a sentence or a photo in, a physics-ready object out.
 import { useEffect, useRef, useState } from "react";
 import { getJob, makeObject, type PublicJob } from "@/lib/client/api";
+import { PhonePair } from "./PhonePair";
 
 const EXAMPLES = ["a stack of three old car tires", "a garden gnome", "a wooden step stool", "a laundry basket full of towels", "a traffic cone", "a beanbag chair"];
 const STYLES = [
@@ -27,8 +28,8 @@ const STAGE_COPY: Record<string, string> = {
   publish: "Adding to the library",
 };
 
-export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectId: string, name: string) => void; initialMode?: "text" | "photo" }) {
-  const [mode, setMode] = useState<"text" | "photo">(initialMode);
+export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectId: string, name: string) => void; initialMode?: "text" | "photo" | "phone" }) {
+  const [mode, setMode] = useState<"text" | "photo" | "phone">(initialMode);
   const [text, setText] = useState("");
   const [style, setStyle] = useState("photorealistic");
   const [file, setFile] = useState<File | null>(null);
@@ -104,8 +105,8 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
 
   return (
     <div className="space-y-4">
-      <div role="tablist" aria-label="Input" className="grid grid-cols-2 rounded-[10px] bg-ink/[0.06] p-1 text-[14px] font-semibold">
-        {(["text", "photo"] as const).map((m) => (
+      <div role="tablist" aria-label="Input" className="grid grid-cols-3 rounded-[10px] bg-ink/[0.06] p-1 text-[13.5px] font-semibold">
+        {(["text", "photo", "phone"] as const).map((m) => (
           <button
             key={m}
             role="tab"
@@ -113,12 +114,14 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
             onClick={() => setMode(m)}
             className={`h-9 rounded-[8px] transition-colors ${mode === m ? "bg-paper shadow-sm" : "text-ink-3 hover:text-ink"}`}
           >
-            {m === "text" ? "Describe it" : "Use a photo"}
+            {m === "text" ? "Describe" : m === "photo" ? "Photo" : "Phone"}
           </button>
         ))}
       </div>
 
-      {mode === "text" ? (
+      {mode === "phone" ? (
+        <PhonePair onReady={onReady} />
+      ) : mode === "text" ? (
         <div className="space-y-3">
           <label className="block">
             <span className="text-[13px] font-semibold text-ink-2">What should Lux3D make?</span>
@@ -167,6 +170,8 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
         </label>
       )}
 
+      {mode !== "phone" && (
+      <>
       <div>
         <button
           disabled={!canMake}
@@ -212,6 +217,8 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
             <p className="mt-3 text-[13px] text-fault">{job.error ?? "Lux3D could not make this one. Try a simpler description or a clearer photo."}</p>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );
