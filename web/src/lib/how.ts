@@ -12,16 +12,25 @@ export const HOW = {
   ] as (string | number)[][],
   robotChecks: [
     ["Pelvis position after 2 s vs Unitree's Python run", "within 2.5 µm"],
-    ["Speed, one laptop core", "about 8× real time"],
-    ["Walk 6 s at 0.5 m/s command", "2.70 m forward"],
+    ["Speed in the browser", "12× real time with one chair, 3–4× with twenty objects"],
+    ["Walk 6 s at 0.5 m/s command", "2.6983 m forward, identical to Python"],
+    ["Ten trials of a one-chair course", "3.7 s of wall time"],
+    ["Compile a 20-object, 120-part scene", "163 ms"],
+    ["Commands with no falls in a sweep", "forward −0.5 to 1.2 m/s, sideways ±0.4 m/s, turn ±1.5 rad/s"],
     ["Stays up after a 0.2 s shove of 150 N", "10 of 10 directions"],
     ["Stays up after a 0.2 s shove of 250 N", "2 of 10 directions"],
   ] as (string | number)[][],
   objectExamples: [
-    ["Kitchen chair (text)", "8", "48 × 45 × 85", "pending"],
-    ["Canvas sneaker (photo)", "1", "28 × 11 × 28", "pending"],
+    ["Kitchen chair (text)", "8", "48 × 45 × 85", "4.9 kg (hull volume would say 18.8 kg)"],
+    ["Canvas sneaker (photo)", "1", "28 × 28 × 11", "volume × density"],
   ] as (string | number)[][],
-  trialExamples: [["pending", "—", "—"]] as (string | number)[][],
+  trialExamples: [
+    ["Kitchen chair 1.5 m ahead", "10/10 (shoves it aside)", "10/10 (no contact)"],
+    ["Fixed 6 cm step across the path", "0/10 (trips)", "—"],
+    ["Fixed 12 cm step across the path", "0/10 (trips)", "—"],
+    ["20 kg crate in the path", "0/10 (blocked)", "routes around"],
+    ["Empty floor, one 250 N shove", "5/10", "—"],
+  ] as (string | number)[][],
   limits: [
     "The controller is blind. It reacts to what it feels in its joints; it never sees the objects. Planner mode adds a map, not vision.",
     "Collision uses each part's convex hull. Hollow or concave parts (a bowl, a basket) collide as filled shapes.",
@@ -32,5 +41,6 @@ export const HOW = {
   ],
   changelog: [
     ["Nov 9", "Probes: Lux3D upload, image and text to 3D, part-split, live price quotes. Design, materializer, home page."],
+    ["Nov 9", "Robot controller in a worker, arena, ten-run trials, planner, library, gauntlet, phone pairing, walking people, robot-ready packs."],
   ] as [string, string][],
 };

@@ -6,9 +6,9 @@ export const FACTS = [
     detail: "After 2 s of walking, the browser controller's pelvis is within 2.5 micrometres of Unitree's Python reference run.",
   },
   {
-    value: "~8×",
+    value: "12×",
     label: "Faster than real time",
-    detail: "MuJoCo compiled to WebAssembly steps the 500 Hz physics about eight times faster than the clock on one laptop core.",
+    detail: "MuJoCo compiled to WebAssembly runs the 500 Hz physics 12 times faster than the clock with one chair, 3–4 times with twenty objects.",
   },
   {
     value: "~80 s",
