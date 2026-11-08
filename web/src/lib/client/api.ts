@@ -110,7 +110,7 @@ function convertParts(doc: PartsDoc): CollisionPart[] {
 
 export type CourseDoc = {
   title: string;
-  objects: { objectId: string; name: string; x: number; y: number; yaw: number; density?: number }[];
+  objects: { objectId: string; name: string; x: number; y: number; yaw: number; density?: number; kind?: "object" | "mover" }[];
   start: { x: number; y: number; yaw: number };
   goal: { x: number; y: number };
   mode: "blind" | "planner";

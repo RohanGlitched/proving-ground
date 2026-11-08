@@ -167,7 +167,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
           viewRef.current?.setGoal(course.goal.x, course.goal.y);
           setMode(course.mode);
           setPushes(!!course.pushes);
-          setPlaced(course.objects.map((o) => ({ uid: newUid(), objectId: o.objectId, name: o.name, x: o.x, y: o.y, yaw: o.yaw, density: o.density })));
+          setPlaced(course.objects.map((o) => ({ uid: newUid(), objectId: o.objectId, name: o.name, x: o.x, y: o.y, yaw: o.yaw, density: o.density, kind: o.kind })));
           say(`Loaded "${course.title}"`);
         })
         .catch(() => say("That course could not be loaded. Starting an empty one.", "fault"));
@@ -340,7 +340,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   async function share() {
     const doc: CourseDoc = {
       title: title.trim() || "Untitled course",
-      objects: placed.map((p) => ({ objectId: p.objectId, name: p.name, x: +p.x.toFixed(3), y: +p.y.toFixed(3), yaw: +p.yaw.toFixed(3), density: p.density })),
+      objects: placed.map((p) => ({ objectId: p.objectId, name: p.name, x: +p.x.toFixed(3), y: +p.y.toFixed(3), yaw: +p.yaw.toFixed(3), density: p.density, kind: p.kind })),
       start,
       goal: { x: +goal.x.toFixed(3), y: +goal.y.toFixed(3) },
       mode: mode === "manual" ? "blind" : mode,
