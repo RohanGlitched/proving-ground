@@ -74,8 +74,11 @@ async function init(m: Extract<Request, { type: 'init' }>): Promise<InitResult> 
   const t0 = performance.now();
   role = m.role;
   const base = m.base.endsWith('/') ? m.base : m.base + '/';
+  // The bundler emits the wasm as a static asset; its URL can come back root-relative and the worker
+  // itself may run from a blob: URL, so resolve it against the page origin (taken from `base`).
+  const wasmUrl = new URL(new URL('../../node_modules/@mujoco/mujoco/mujoco.wasm', import.meta.url).href, m.base).href;
   const [mujoco, assets] = await Promise.all([
-    loadMujoco(),
+    loadMujoco({ locateFile: (p: string) => (p.endsWith('.wasm') ? wasmUrl : p) }),
     loadRobotAssets(async (p) => {
       const r = await fetch(base + p);
       if (!r.ok) throw new Error(`fetch ${base + p}: ${r.status}`);

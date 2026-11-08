@@ -146,7 +146,8 @@ export function decodeHeader(b: Float32Array, layout: FrameLayout): FrameHeader 
 }
 
 export function createSim(opts: SimOptions = {}): SimClient {
-  const base = opts.base ?? '/g1/';
+  // absolute: module workers may run from a blob: URL where '/g1/' does not resolve
+  const base = new URL(opts.base ?? '/g1/', globalThis.location?.href ?? 'http://localhost/').href;
   const contactCbs = new Set<(e: ContactEvent) => void>();
   const statusCbs = new Set<(s: RobotStatus, t: number) => void>();
   const perfCbs = new Set<(p: { realTimeFactor: number; stepsPerSecond: number }) => void>();
