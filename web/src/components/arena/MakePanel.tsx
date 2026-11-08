@@ -1,7 +1,7 @@
 "use client";
 // Make an object with Lux3D: a sentence or a photo in, a physics-ready object out.
 import { useEffect, useRef, useState } from "react";
-import { getJob, makeObject, type PublicJob } from "@/lib/client/api";
+import { getJob, getStatus, makeObject, type PublicJob } from "@/lib/client/api";
 import { PhonePair } from "./PhonePair";
 
 const EXAMPLES = ["a stack of three old car tires", "a garden gnome", "a wooden step stool", "a laundry basket full of towels", "a traffic cone", "a beanbag chair"];
@@ -39,6 +39,10 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const done = useRef<string | null>(null);
+  const [queue, setQueue] = useState<{ queueLength: number; dailyRemaining?: number } | null>(null);
+  useEffect(() => {
+    getStatus().then(setQueue).catch(() => {});
+  }, [job]);
 
   // poll the job; each poll also advances it on the server
   useEffect(() => {
@@ -181,6 +185,13 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
           {busy ? "Sending to Lux3D…" : "Make it"}
         </button>
         {reason && !busy && <p className="mt-2 text-[12.5px] text-ink-3">{reason}</p>}
+        {!job && queue && (
+          <p className="mt-2 text-[12.5px] text-ink-3">
+            Free · about {mode === "text" ? "2" : "2–3"} min with part-split ·{" "}
+            {queue.queueLength ? `${queue.queueLength} ahead of you in the Lux3D queue` : "the Lux3D queue is empty"}
+            {queue.dailyRemaining != null ? ` · ${queue.dailyRemaining} makes left today` : ""}
+          </p>
+        )}
         {error && <p className="mt-2 text-[13px] text-fault">{error}</p>}
       </div>
 

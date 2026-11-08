@@ -132,7 +132,7 @@ export class ArenaView {
   private movers = new Map<string, { root: THREE.Group; mixer: THREE.AnimationMixer | null; lift: number }>();
   private goal = goalFlag();
   private start = startPad();
-  private pathLine: THREE.Line | null = null;
+  private pathLine: THREE.Object3D | null = null;
   private trails = new THREE.Group();
   private marks = new THREE.Group();
   private selectedRing: THREE.Mesh;
@@ -315,23 +315,41 @@ export class ArenaView {
 
   }
 
-  /** Draw the planner's path (MuJoCo xy pairs). */
+  /** Draw the planner's path (MuJoCo xy pairs) as a bright tube on the floor with a dot at each turn. */
   setPath(xy: number[] | null, tone: "route" | "pass" = "route") {
     if (this.pathLine) {
       this.stage.scene.remove(this.pathLine);
-      this.pathLine.geometry.dispose();
+      this.pathLine.traverse((o) => {
+        const m = o as THREE.Mesh;
+        m.geometry?.dispose();
+        (m.material as THREE.Material | undefined)?.dispose?.();
+      });
       this.pathLine = null;
     }
     if (!xy || xy.length < 4) return;
     const pts: THREE.Vector3[] = [];
-    for (let i = 0; i < xy.length; i += 2) pts.push(floorPoint(xy[i], xy[i + 1], 0.01));
-    const g = new THREE.BufferGeometry().setFromPoints(pts);
-    this.pathLine = new THREE.Line(
-      g,
-      new THREE.LineDashedMaterial({ color: tone === "pass" ? PASS : ROUTE, dashSize: 0.08, gapSize: 0.05 }),
-    );
-    this.pathLine.computeLineDistances();
-    this.stage.scene.add(this.pathLine);
+    for (let i = 0; i < xy.length; i += 2) pts.push(floorPoint(xy[i], xy[i + 1], 0.03));
+    const g = new THREE.Group();
+    const color = tone === "pass" ? PASS : new THREE.Color("#5b86ff");
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false });
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const len = a.distanceTo(b);
+      if (len < 1e-3) continue;
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, len, 10), mat);
+      seg.position.copy(a).add(b).multiplyScalar(0.5);
+      seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+      g.add(seg);
+    }
+    const dot = new THREE.SphereGeometry(0.045, 14, 10);
+    for (const p of pts) {
+      const d = new THREE.Mesh(dot, mat);
+      d.position.copy(p);
+      g.add(d);
+    }
+    g.renderOrder = 2;
+    this.pathLine = g;
+    this.stage.scene.add(g);
   }
 
   /** Trial trails and fall crosses from a batch of trials. */

@@ -18,8 +18,8 @@ export const REPORT = {
     ["Photo to 3D", "img-to-3d · G1-Turbo", "1", "~80 s"],
     ["Sentence to 3D", "text-to-3d · G1-Turbo", "13", "~80 s"],
     ["Split into parts", "part-split", "30", "~80 s"],
-    ["Rig a person", "animations/rig", "15", "pending"],
-    ["Make them walk", "animations/retarget · Walk_Loop", "6", "pending"],
+    ["Rig a person", "animations/rig", "15", "~63 s"],
+    ["Make them walk", "animations/retarget · Walk_Loop", "6", "~120 s"],
     ["Price every job first", "pricing/openapi-quotes", "0", "<1 s"],
   ] as string[][],
   pipelineNotes: [
@@ -29,7 +29,7 @@ export const REPORT = {
   ],
   iterations: [
     ["Collision", "1 hull per object", "1 hull per Lux3D part"],
-    ["Chair mass", "18.8 kg (hull volume)", "4.9 kg (closed mesh volume)"],
+    ["Chair mass", "18.8 kg (hull volume)", "5.2 kg (closed mesh volume)"],
     ["Face count", "300k faces, 19 MB", "20k faces, ~7 MB from Lux3D"],
     ["Web file", "raw GLB", "simplified + compressed visual"],
     ["Inputs", "public image URL", "Aholo asset upload"],
@@ -40,7 +40,7 @@ export const REPORT = {
     ["Speed in the browser", "12× real time (one chair), 3–4× (20 objects)"],
     ["10 trials of a chair course", "3.7 s wall time"],
     ["Compile a 20-object scene", "163 ms"],
-    ["Shove of 250 N for 0.2 s", "falls 5 of 10"],
+    ["One 250 N shove at a random moment and angle", "falls 5 of 10 walks"],
   ] as string[][],
   results: [
     "A Lux3D park bench across the path: blind walk reaches the flag 0 of 10 times (it pushes a 56 kg bench and stalls); the planner routes around it 10 of 10. That gap is what perception is worth, measured.",

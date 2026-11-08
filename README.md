@@ -42,7 +42,7 @@ Things we learned the hard way are in [web/src/lib/pipeline/README.md](web/src/l
 
 ## The robot
 
-Unitree's G1 with its 12-joint leg model and Unitree's published walking policy from `unitree_rl_gym` (BSD-3-Clause). The LSTM is read straight from the TorchScript file and runs in plain JavaScript at 50 Hz on 500 Hz MuJoCo physics compiled to WebAssembly. After 2 s of walking it is within 2.5 µm of Unitree's Python reference; a 6 s walk covers 2.6983 m in both. Details and limits: [web/src/sim/README.md](web/src/sim/README.md).
+Unitree's G1 with its 12-joint leg model and Unitree's published walking policy from `unitree_rl_gym` (BSD-3-Clause). The LSTM is read straight from the TorchScript file and runs in plain JavaScript at 50 Hz on 500 Hz MuJoCo physics compiled to WebAssembly. After 2 s of walking it is within 2.5 µm of Unitree's Python reference; a 6 s walk covers 2.6983 m in both. It runs 12× faster than real time with one object, 3–4× with twenty. Details and limits: [web/src/sim/README.md](web/src/sim/README.md).
 
 ## Run it locally
 

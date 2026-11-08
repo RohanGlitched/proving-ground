@@ -6,9 +6,9 @@ export const HOW = {
     ["Photo to 3D (fast)", "img-to-3d, G1-Turbo", "1", "~80 s"],
     ["Sentence to 3D (fast)", "text-to-3d, G1-Turbo", "13", "~80 s"],
     ["Split into parts", "part-split", "30", "~80 s"],
-    ["Rig a person", "animations/rig", "15", "pending"],
-    ["Make them walk", "animations/retarget, Walk_Loop", "6", "pending"],
-    ["Make a door open", "articulation-animation", "28", "pending"],
+    ["Rig a person", "animations/rig", "15", "~63 s"],
+    ["Make them walk", "animations/retarget, Walk_Loop", "6", "~120 s"],
+    ["Higher-detail model (G1)", "img/text-to-3d, G1", "20", "~290 s"],
   ] as (string | number)[][],
   robotChecks: [
     ["Pelvis position after 2 s vs Unitree's Python run", "within 2.5 µm"],
@@ -21,7 +21,7 @@ export const HOW = {
     ["Stays up after a 0.2 s shove of 250 N (10 fixed directions)", "2 of 10"],
   ] as (string | number)[][],
   objectExamples: [
-    ["Kitchen chair (text)", "8", "48 × 45 × 85", "4.9 kg (hull volume would say 18.8 kg)"],
+    ["Kitchen chair (text)", "8", "48 × 45 × 85", "5.2 kg (hull volume would say 18.8 kg)"],
     ["Canvas sneaker (photo)", "1", "28 × 28 × 11", "volume × density"],
   ] as (string | number)[][],
   trialExamples: [
@@ -40,7 +40,6 @@ export const HOW = {
     "Movers (walking people, swinging doors) are kinematic: they push the robot but nothing pushes them back.",
   ],
   changelog: [
-    ["Nov 9", "Probes: Lux3D upload, image and text to 3D, part-split, live price quotes. Design, materializer, home page."],
-    ["Nov 9", "Robot controller in a worker, arena, ten-run trials, planner, library, gauntlet, phone pairing, walking people, robot-ready packs."],
+    ["Nov 9", "Probes (Lux3D upload, image and text to 3D, part-split, price quotes), then the whole build: robot controller in a worker, arena, ten-run trials, planner, library with trip tests, gauntlet, phone pairing, walking people, robot-ready packs."],
   ] as [string, string][],
 };

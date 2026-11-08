@@ -131,7 +131,7 @@ export default function HowPage() {
               solids, so the robot&apos;s foot can go between the legs; a single-mesh chair would be one solid block.
             </p>
             <p>
-              Mass is the closed mesh volume times a density for the kind of object (400 kg/m³ by default, a hollow-ish household object; hull volume would make a chair weigh 18.8 kg instead of 4.9 kg), clamped
+              Mass is the closed mesh volume times a household density (400 kg/m³ by default, which you can change per object; hull volume would make a chair weigh 18.8 kg instead of 5.2 kg), clamped
               between 50 g and 80 kg. Every object shows its mass and lets you change it. Friction is 0.8 unless set.
             </p>
             <Table head={["Object", "Parts", "Size (cm)", "Mass"]} rows={HOW.objectExamples} />

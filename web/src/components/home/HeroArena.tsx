@@ -52,7 +52,7 @@ export function HeroArena() {
       </div>
       {status.phase === "result" && status.result && (
         <div className="absolute right-6 top-16 sm:right-10 sm:top-20">
-          <Stamp tone={status.result === "goal" ? "pass" : "fault"} animate rotate={-8} className="bg-white/90 text-[15px]">
+          <Stamp tone={status.result === "goal" ? "pass" : "fault"} animate rotate={-8} onDark className="text-[17px] !px-3 !py-1">
             {status.result === "goal" ? "Reached goal" : status.result === "fell" ? `Fell${status.on ? ` · ${status.on}` : ""}` : "Timed out"}
           </Stamp>
         </div>

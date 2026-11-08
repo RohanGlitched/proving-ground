@@ -2,21 +2,23 @@
 // with masses, and the metadata. Same data the arena's physics uses.
 import { zipSync, strToU8 } from "fflate";
 import { toMJCF } from "@/sim/assets";
-import { getParts, objectUrl, type LibraryEntry } from "./api";
+import { getPhysics, objectUrl, type LibraryEntry } from "./api";
 
 export async function buildPack(e: LibraryEntry, density = 400) {
-  const [parts, visual, meta] = await Promise.all([
-    getParts(e.id),
+  const [phys, visual, meta] = await Promise.all([
+    getPhysics(e.id),
     fetch(objectUrl(e.id, "visual.glb")).then((r) => r.arrayBuffer()),
     fetch(objectUrl(e.id, "meta.json")).then((r) => r.text()),
   ]);
-  const mj = toMJCF({ name: e.slug ?? e.name, parts, density });
+  const parts = phys.parts;
+  // the same mass the arena uses: closed mesh volume × density (hull volume overstates hollow shapes)
+  const mj = toMJCF({ name: e.slug ?? e.name, parts, density, mass: phys.volume ? phys.volume * density : undefined });
   const readme = `${e.name}
 Made with Aholo Lux3D in Proving Ground.
 
 visual.glb   textured mesh, metres, Y-up (glTF convention)
 object.xml   MuJoCo model: a free body with ${parts.length} convex mesh geoms, ${mj.mass.toFixed(2)} kg total
-             (density ${density} kg/m^3 over hull volume), Z-up. Load it with mujoco.MjModel.from_xml_path.
+             (density ${density} kg/m^3 over the closed mesh volume), Z-up. Load it with mujoco.MjModel.from_xml_path.
 meshes/      one convex hull per Lux3D part, binary STL, metres, Z-up
 meta.json    size, source and Lux3D task ids
 

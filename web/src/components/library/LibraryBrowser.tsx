@@ -150,7 +150,7 @@ export function LibraryBrowser() {
               <Thumb id={e.id} alt={e.name} className="aspect-square" />
               <div className="border-t border-ink/8 px-3 py-2.5">
                 <div className="truncate font-semibold">{e.name}</div>
-                <div className="data mt-0.5 truncate text-[11.5px] text-ink-3">{sizeLabel(e.size)}</div>
+                <div className="data mt-0.5 truncate text-[11.5px] text-ink-3">{sizeLabel(e.size, e.kind)}</div>
                 {trips[e.id] && (
                   <div className="mt-2">
                     <Stamp tone={verdict(trips[e.id]).tone} rotate={-3} className="!px-1.5 !text-[10.5px]">
@@ -185,7 +185,7 @@ export function LibraryBrowser() {
                 </div>
                 <dl className="mt-5 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[14.5px]">
                   <dt className="text-ink-3">Size</dt>
-                  <dd className="tnum">{sizeLabel(open.size)}</dd>
+                  <dd className="tnum">{sizeLabel(open.size, open.kind)}</dd>
                   <dt className="text-ink-3">Parts</dt>
                   <dd className="tnum">{open.parts} convex {open.parts === 1 ? "solid" : "solids"}</dd>
                   <dt className="text-ink-3">Made from</dt>

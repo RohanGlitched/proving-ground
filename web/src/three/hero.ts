@@ -30,7 +30,8 @@ export function startHero(canvas: HTMLCanvasElement, onStatus: (s: HeroStatus) =
   let sim: import("@/sim/client").SimClient | null = null;
   let simTime: number | null = null;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const light = (navigator.hardwareConcurrency ?? 8) < 4 || window.innerWidth < 640;
+  // only very weak devices skip the physics; phones run the real controller too
+  const light = (navigator.hardwareConcurrency ?? 8) < 4;
 
   (async () => {
     const { ArenaView } = await import("./arenaView");
@@ -79,8 +80,13 @@ export function startHero(canvas: HTMLCanvasElement, onStatus: (s: HeroStatus) =
     if (light) {
       // phones: no physics, just the build
       const e = items.find((i) => i.parts > 2) ?? items[0];
-      await view.upsertObject({ uid: "show", objectId: e.id, name: e.name, x: 1.4, y: 0, yaw: 0.4 }, objectUrl(e.id, "visual.glb"));
-      onStatus({ phase: "making", object: e.name });
+      // replay the Lux3D build on a loop
+      for (let r = 0; !disposed; r++) {
+        await view.upsertObject({ uid: `show${r}`, objectId: e.id, name: e.name, x: 1.4, y: 0, yaw: 0.4 }, objectUrl(e.id, "visual.glb"));
+        onStatus({ phase: "making", object: e.name });
+        await wait(7000);
+        view.removeObject(`show${r}`);
+      }
       return;
     }
 

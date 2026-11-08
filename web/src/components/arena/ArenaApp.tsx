@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CameraFrame } from "@/components/ui/CameraFrame";
 import { Stamp, Target } from "@/components/ui/marks";
 import { MakePanel } from "./MakePanel";
+import { tripIndex } from "@/lib/client/trips";
 import { LibraryDrawer, sizeLabel } from "./LibraryDrawer";
 import { ResultsSheet } from "./ResultsSheet";
 import { createArenaSim, type ArenaSim, type FrameHeader } from "./simAdapter";
@@ -38,6 +39,27 @@ const DEFAULT_GOAL = { x: 4.5, y: 0 };
 const DEFAULT_START = { x: 0, y: 0, yaw: 0 };
 // slugs of library objects used for the first course a visitor sees
 const STARTER = ["traffic-cone", "cardboard-box", "kitchen-chair", "car-tire", "basketball"];
+
+/** The most open spot between start and goal, close to the walking line: new objects never land on the flag or each other. */
+function freeSpot(placed: { x: number; y: number; r?: number }[], goal: { x: number; y: number }, start: { x: number; y: number }, r = 0.3) {
+  let best = { x: Math.max(1.5, 0.8 + r), y: 0 }, bestScore = -Infinity;
+  const x1 = Math.max(1.2, goal.x - 0.6 - r);
+  for (let x = 0.8 + r; x <= x1; x += 0.25) {
+    for (let y = -0.75; y <= 0.75; y += 0.25) {
+      let d = Math.min(Math.hypot(x - goal.x, y - goal.y) - 0.5 - r, Math.hypot(x - start.x, y - start.y) - 0.8 - r);
+      for (const p of placed) d = Math.min(d, Math.hypot(x - p.x, y - p.y) - r - (p.r ?? 0.3));
+      const score = Math.min(d, 1.2) - Math.abs(y) * 0.35;
+      if (score > bestScore) {
+        bestScore = score;
+        best = { x, y };
+      }
+    }
+  }
+  return best;
+}
+
+/** footprint radius of a library object (metres) */
+const radiusOf = (e?: { size: [number, number, number] }) => (e ? Math.hypot(e.size[0], e.size[2]) / 2 : 0.3);
 
 let uidN = 0;
 const newUid = () => `o${Date.now().toString(36)}${(uidN++).toString(36)}`;
@@ -161,7 +183,8 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     if (courseId) {
       seeded.current = true;
       loadCourse(courseId)
-        .then(({ course }) => {
+        .then(({ course, stats }) => {
+          setShared({ title: course.title, stats });
           setTitle(course.title);
           setGoal(course.goal);
           viewRef.current?.setGoal(course.goal.x, course.goal.y);
@@ -175,12 +198,31 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     }
     if (libLoading) return;
     seeded.current = true;
-    const pick = STARTER.map((s) => library.find((e) => e.slug === s)).filter(Boolean) as LibraryEntry[];
-    const fallback = library.filter((e) => e.kind === "object").slice(0, 3);
-    let chosen = (pick.length >= 2 ? pick : fallback).slice(0, 3);
-    const extra = addId ? library.find((e) => e.id === addId) : undefined;
-    if (extra) chosen = [extra, ...chosen.filter((e) => e.id !== extra.id)].slice(0, 3);
-    setPlaced(chosen.map((e, i) => ({ uid: newUid(), objectId: e.id, name: e.name, x: 1.6 + i * 0.95, y: i === 1 ? -0.35 : 0.3 * (i ? 1 : -0.4), yaw: i * 0.6 })));
+    // the first course should be a real test: objects the trip test says trip or block the robot,
+    // right in the foot path, plus a walking person when the library has one
+    tripIndex().then((trips) => {
+      const objects = library.filter((e) => e.kind === "object");
+      // prefer things that make it fall over things that just block it, and nothing furniture-sized
+      const score = (e: LibraryEntry) => {
+        const t = trips[e.id];
+        return t ? t.falls * 3 + t.timeouts * 0.3 - t.passes * 0.2 : -100;
+      };
+      const ranked = objects.filter((e) => radiusOf(e) < 0.6).sort((a, b) => score(b) - score(a));
+      const pick = STARTER.map((s) => library.find((e) => e.slug === s)).filter(Boolean) as LibraryEntry[];
+      let chosen = (ranked.length >= 2 ? ranked : pick).slice(0, 2);
+      const extra = addId ? library.find((e) => e.id === addId) : undefined;
+      if (extra) chosen = [extra, ...chosen.filter((e) => e.id !== extra.id)].slice(0, 2);
+      const r0 = radiusOf(chosen[0]), r1 = radiusOf(chosen[1]);
+      const x0 = Math.max(1.35, 0.8 + r0);
+      const spots = [
+        { x: x0, y: 0.02, yaw: 0.35 },
+        { x: Math.min(DEFAULT_GOAL.x - 0.7 - r1, Math.max(2.75, x0 + r0 + r1 + 0.6)), y: -0.08, yaw: 1.2 },
+      ];
+      const next: Placed[] = chosen.map((e, i) => ({ uid: newUid(), objectId: e.id, name: e.name, ...spots[i] }));
+      const walker = library.find((e) => e.kind === "pedestrian");
+      if (walker && !extra) next.push({ uid: newUid(), objectId: walker.id, name: walker.name, kind: "mover", x: 2.1, y: 0, yaw: 0 });
+      setPlaced(next);
+    });
   }, [boot, courseId, libLoading, library, say, addId]);
 
   // ---- keep the view and the physics scene in sync with placements ----
@@ -240,6 +282,12 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     viewRef.current?.setGoal(goal.x, goal.y);
   }, [goal]);
 
+  // results belong to the course they were run on: any edit clears them
+  useEffect(() => {
+    setTrials(null);
+    viewRef.current?.clearTrials();
+  }, [placed, goal, mode, pushes]);
+
   // ---- manual steering ----
   useEffect(() => {
     if (mode !== "manual") return;
@@ -276,7 +324,8 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       say(`${e.name} starts walking across the course`);
       return;
     }
-    const p: Placed = { uid: newUid(), objectId: e.id, name: e.name, x: Math.min(goal.x - 0.8, 1.4 + (n % 4) * 0.8), y: ((n % 3) - 1) * 0.45, yaw: (n * 0.7) % Math.PI };
+    const spot = freeSpot(placed.map((p) => ({ ...p, r: radiusOf(byId.get(p.objectId)) })), goal, start, radiusOf(e));
+    const p: Placed = { uid: newUid(), objectId: e.id, name: e.name, x: spot.x, y: spot.y, yaw: (n * 0.7) % Math.PI };
     setPlaced((ps) => [...ps, p]);
     setSelected(p.uid);
     viewRef.current?.select(p.uid);
@@ -286,11 +335,13 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   const onMade = useCallback(
     (objectId: string, name: string) => {
       getLibrary().then(setLibrary).catch(() => {});
-      const p: Placed = { uid: newUid(), objectId, name, x: 2.2, y: 0, yaw: 0 };
-      setPlaced((ps) => [...ps, p]);
+      setPlaced((ps) => {
+        const spot = freeSpot(ps, goal, start);
+        return [...ps, { uid: newUid(), objectId, name, x: spot.x, y: spot.y, yaw: 0 }];
+      });
       say(`Lux3D made ${name}. Dropping it in.`, "pass");
     },
-    [say],
+    [say, goal, start],
   );
 
   function play() {
@@ -312,7 +363,8 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     simRef.current?.pause();
     setRunning(false);
     setStatus("running");
-    say("Reset");
+    prevStatus.current = "running";
+    setLog([]);
   }
 
   async function runTrials() {
@@ -324,7 +376,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     viewRef.current?.clearTrials();
     const seed = Math.floor(Math.random() * 1e6);
     try {
-      const summary = await sim.runTrials({ n: 10, seed, mode, pushes: pushes ? { count: 1, force: 120 } : null, maxSeconds: 20 }, (done) => setTrialProgress(done));
+      const summary = await sim.runTrials({ n: 10, seed, mode, pushes: pushes ? { count: 1, force: 170 } : null, maxSeconds: 20 }, (done) => setTrialProgress(done));
       setTrials(summary);
       viewRef.current?.showTrials(summary.trials);
       say(`10 runs: ${Math.round(summary.passRate * 100)}% reached the goal`, summary.passRate >= 0.5 ? "pass" : "fault");
@@ -337,7 +389,16 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   }
 
   const courseIdSaved = useRef<string | null>(courseId ?? null);
-  async function share() {
+  const [naming, setNaming] = useState(false);
+  const [shared, setShared] = useState<{ title: string; stats: { runs: number; trials: number; passes: number; bestPassRate: number | null } | null } | null>(null);
+  const steer = useRef({ f: 0, t: 0 });
+  const sendSteer = () => simRef.current?.setCommand({ vx: steer.current.f * 0.6, vy: 0, yaw: steer.current.t * 0.7 });
+  async function share(force = false) {
+    if (!force && (!title.trim() || title.trim() === "Untitled course")) {
+      setNaming(true);
+      return;
+    }
+    setNaming(false);
     const doc: CourseDoc = {
       title: title.trim() || "Untitled course",
       objects: placed.map((p) => ({ objectId: p.objectId, name: p.name, x: +p.x.toFixed(3), y: +p.y.toFixed(3), yaw: +p.yaw.toFixed(3), density: p.density, kind: p.kind })),
@@ -385,11 +446,11 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
 
   const statusStamp =
     status === "fell" ? (
-      <Stamp tone="fault" animate rotate={-7} className="bg-white/90 text-[15px]">
+      <Stamp tone="fault" animate rotate={-7} onDark className="text-[17px] !px-3 !py-1">
         Fell
       </Stamp>
     ) : status === "goal" ? (
-      <Stamp tone="pass" animate rotate={-5} className="bg-white/90 text-[15px]">
+      <Stamp tone="pass" animate rotate={-5} onDark className="text-[17px] !px-3 !py-1">
         Reached goal
       </Stamp>
     ) : null;
@@ -433,7 +494,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
             </button>
           ))}
         </div>
-        <button onClick={share} disabled={!placed.length} className="hidden h-9 rounded-[10px] border border-ink/15 px-3 text-[14px] font-semibold hover:bg-ink/5 disabled:opacity-40 sm:block">
+        <button onClick={() => share()} disabled={!placed.length} className="hidden h-9 rounded-[10px] border border-ink/15 px-3 text-[14px] font-semibold hover:bg-ink/5 disabled:opacity-40 sm:block">
           Save and share
         </button>
       </header>
@@ -474,6 +535,49 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
               </div>
             )}
             <div className="absolute right-5 top-20 sm:right-8">{statusStamp}</div>
+            {shared && (
+              <div className="absolute left-4 top-14 max-w-[min(420px,80%)] rounded-[8px] bg-black/60 px-3 py-2 text-[13px] text-white backdrop-blur-sm sm:left-6">
+                <div className="font-semibold">Shared course: {shared.title}</div>
+                <div className="text-white/70">
+                  {shared.stats && shared.stats.trials > 0
+                    ? `Robot pass rate ${Math.round((shared.stats.passes / shared.stats.trials) * 100)}% over ${shared.stats.trials} recorded trials. `
+                    : ""}
+                  Edit anything; saving makes your own copy.
+                </div>
+              </div>
+            )}
+            {mode === "manual" && (
+              <div className="absolute bottom-20 right-4 grid grid-cols-3 gap-1.5 sm:right-6" aria-label="Steering pad">
+                {[
+                  { k: "up", label: "Forward", glyph: "▲", col: 2, row: 1, v: { f: 1, t: 0 } },
+                  { k: "left", label: "Turn left", glyph: "◀", col: 1, row: 2, v: { f: 0.5, t: 1 } },
+                  { k: "right", label: "Turn right", glyph: "▶", col: 3, row: 2, v: { f: 0.5, t: -1 } },
+                  { k: "down", label: "Back", glyph: "▼", col: 2, row: 2, v: { f: -0.5, t: 0 } },
+                ].map((b) => (
+                  <button
+                    key={b.k}
+                    aria-label={b.label}
+                    style={{ gridColumn: b.col, gridRow: b.row }}
+                    onPointerDown={(e) => {
+                      e.currentTarget.setPointerCapture(e.pointerId);
+                      steer.current = b.v;
+                      sendSteer();
+                    }}
+                    onPointerUp={() => {
+                      steer.current = { f: 0, t: 0 };
+                      sendSteer();
+                    }}
+                    onPointerCancel={() => {
+                      steer.current = { f: 0, t: 0 };
+                      sendSteer();
+                    }}
+                    className="grid h-12 w-12 touch-none select-none place-items-center rounded-[10px] bg-white/85 text-[18px] text-ink shadow active:bg-target"
+                  >
+                    {b.glyph}
+                  </button>
+                ))}
+              </div>
+            )}
             {trialProgress != null && (
               <div className="absolute inset-x-0 bottom-14 mx-auto w-fit rounded-[8px] bg-black/70 px-4 py-2 text-[13px] text-white">
                 Running trial {Math.min(10, trialProgress + 1)} of 10 at full speed…
@@ -594,7 +698,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
             </label>
             <label className="flex items-center gap-2 text-[13.5px]">
               <input type="checkbox" checked={pushes} onChange={(e) => setPushes(e.target.checked)} className="h-4 w-4 accent-[#141517]" />
-              Shove the robot once per trial (120 N)
+              Shove the robot once per trial (170 N)
             </label>
 
             <ResultsSheet summary={trials} running={trialProgress} names={Object.fromEntries(placed.map((p) => [p.uid, p.name]))} mode={mode} />
@@ -611,12 +715,43 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
                 ))}
               </ol>
             </div>
-            <button onClick={share} disabled={!placed.length} className="h-10 w-full rounded-[10px] border border-ink/15 text-[14px] font-semibold hover:bg-ink/5 disabled:opacity-40 sm:hidden">
+            <button onClick={() => share()} disabled={!placed.length} className="h-10 w-full rounded-[10px] border border-ink/15 text-[14px] font-semibold hover:bg-ink/5 disabled:opacity-40 sm:hidden">
               Save and share
             </button>
           </div>
         </aside>
       </div>
+      {naming && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-ink/50 p-4" role="dialog" aria-modal aria-label="Name your course" onClick={() => setNaming(false)}>
+          <form
+            className="sheet w-full max-w-sm p-5"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (title.trim() && title.trim() !== "Untitled course") share(true);
+            }}
+          >
+            <div className="font-semibold">Name your course</div>
+            <p className="mt-1 text-[13.5px] text-ink-3">It appears in the gauntlet with its pass rate.</p>
+            <input
+              autoFocus
+              value={title === "Untitled course" ? "" : title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={60}
+              placeholder="Kitchen floor at night"
+              className="mt-3 h-11 w-full rounded-[10px] border border-ink/15 bg-paper px-3 outline-none focus:border-route"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setNaming(false)} className="h-10 rounded-[10px] px-4 font-semibold text-ink-2 hover:bg-ink/5">
+                Cancel
+              </button>
+              <button type="submit" disabled={!title.trim() || title.trim() === "Untitled course"} className="h-10 rounded-[10px] bg-target px-4 font-semibold disabled:opacity-45">
+                Save and copy link
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
       {toast && (
         <div role="status" className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-[10px] bg-ink px-4 py-3 text-[14px] text-white shadow-lg">
           {toast}

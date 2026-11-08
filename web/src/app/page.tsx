@@ -130,13 +130,13 @@ export default function Home() {
               </p>
             </div>
             <div className="md:col-span-6">
-              <pre className="data overflow-x-auto rounded-[3px] bg-ink p-5 text-[12.5px] leading-[1.7] text-white/85">{`chair-4f2a/
-  visual.glb          textured, metric, Y-up
-  parts/part-0.stl    convex hull, metres
-  parts/part-1.stl    …8 parts from Lux3D part-split
-  object.xml          <body> with 8 mesh geoms,
-                      mass 5.4 kg, friction 0.8
-  meta.json           size, source prompt, task ids`}</pre>
+              <pre className="data overflow-x-auto rounded-[3px] bg-ink p-5 text-[12.5px] leading-[1.7] text-white/85">{`kitchen-chair-robot-pack.zip
+  visual.glb                     textured, metric, Y-up
+  meshes/kitchen-chair_part0.stl convex hull, metres, Z-up
+  meshes/…_part7.stl             8 parts from Lux3D part-split
+  object.xml                     MuJoCo body, 8 mesh geoms,
+                                 5.2 kg, friction 0.8
+  meta.json                      size, prompt, Lux3D task ids`}</pre>
               <Ruler metres={3} className="mt-6" />
             </div>
           </div>
@@ -155,8 +155,8 @@ export default function Home() {
               parts from part-split means a closer fit.
             </li>
             <li>
-              <strong className="text-ink">Masses are estimates.</strong> Lux3D predicts size, not weight. Mass is the mesh volume times a density for
-              the kind of object, shown on every object so you can change it.
+              <strong className="text-ink">Masses are estimates.</strong> Lux3D predicts size, not weight. Mass is the mesh volume times a household
+              density of 400 kg/m³, shown on every object so you can change it.
             </li>
             <li>
               <strong className="text-ink">One generation at a time.</strong> Lux3D runs one task per account, so new objects queue. The library is

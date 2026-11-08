@@ -4,7 +4,7 @@ import type { LibraryEntry } from "@/lib/client/api";
 import { Thumb } from "./Thumb";
 
 export const cm = (m: number) => Math.round(m * 100);
-export const sizeLabel = (s: [number, number, number]) => `${cm(s[0])} × ${cm(s[2])} × ${cm(s[1])} cm`;
+export const sizeLabel = (s: [number, number, number], kind?: string) => (kind === "pedestrian" ? `${cm(s[1])} cm tall` : `${cm(s[0])} × ${cm(s[2])} × ${cm(s[1])} cm`);
 
 export function LibraryDrawer({ items, loading, onAdd }: { items: LibraryEntry[]; loading: boolean; onAdd: (e: LibraryEntry) => void }) {
   const [q, setQ] = useState("");

@@ -32,17 +32,20 @@ export function Stamp({
   rotate = -6,
   animate = false,
   className = "",
+  onDark = false,
 }: {
   children: React.ReactNode;
   tone?: StampTone;
   rotate?: number;
   animate?: boolean;
   className?: string;
+  /** on a dark camera view: solid paper backing, no multiply blend (multiply turns it black) */
+  onDark?: boolean;
 }) {
   return (
     <span
       className={`inline-block rounded-[4px] border-[2.5px] px-2 py-0.5 text-[13px] font-extrabold uppercase tracking-[0.08em] [font-stretch:115%] ${TONES[tone]} ${animate ? "stamp-in" : ""} ${className}`}
-      style={{ transform: `rotate(${rotate}deg)`, ["--rot" as string]: `${rotate}deg`, mixBlendMode: "multiply" }}
+      style={{ transform: `rotate(${rotate}deg)`, ["--rot" as string]: `${rotate}deg`, mixBlendMode: onDark ? "normal" : "multiply", background: onDark ? "rgba(247,246,242,0.95)" : undefined, boxShadow: onDark ? "0 6px 24px rgba(0,0,0,0.45)" : undefined }}
     >
       {children}
     </span>

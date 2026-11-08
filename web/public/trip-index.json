@@ -1,5 +1,5 @@
 {
- "generatedAt": 1794169071507,
+ "generatedAt": 1794170000398,
  "method": "object 1.4 m ahead, 10 seeded blind walks, start jitter 10 cm / 10 deg, object jitter 10 cm / 34 deg, 14 s limit",
  "items": {
   "2kde4rldpa": {
@@ -44,6 +44,50 @@
    "timeouts": 10,
    "touched": 10,
    "mass": 55.936,
+   "seed": 11
+  },
+  "drm4noi2w4": {
+   "slug": "cardboard-box",
+   "name": "Cardboard box",
+   "n": 10,
+   "passes": 3,
+   "falls": 6,
+   "timeouts": 1,
+   "touched": 10,
+   "mass": 10.5496,
+   "seed": 11
+  },
+  "k18gtp5kno": {
+   "slug": "car-tire",
+   "name": "Car tire",
+   "n": 10,
+   "passes": 5,
+   "falls": 0,
+   "timeouts": 5,
+   "touched": 10,
+   "mass": 18.028,
+   "seed": 11
+  },
+  "5tiztzpoln": {
+   "slug": "basketball",
+   "name": "Basketball",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 3.18192,
+   "seed": 11
+  },
+  "sn0fwqv8v6": {
+   "slug": "laundry-basket",
+   "name": "Laundry basket",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 2.4758,
    "seed": 11
   }
  }
