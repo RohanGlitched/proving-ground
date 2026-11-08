@@ -247,6 +247,13 @@ export class Materializer {
     return out.copy(p.center).add(p.mesh.position).applyMatrix4(this.group.matrixWorld);
   }
 
+  /** Physics view: keep every part's convex hull visible over the finished object. */
+  hullView = false;
+  setHullView(v: boolean) {
+    this.hullView = v;
+    if (this.done) this.apply(this.t);
+  }
+
   get done() {
     return this.t >= MATERIALIZE_SECONDS;
   }
@@ -300,7 +307,8 @@ export class Materializer {
     const rv = easeInOut(span(t, T.reveal));
     // explode out, then close
     const out = easeInOut(span(t, T.split)) * (1 - easeInOut(span(t, T.close)));
-    const hullIn = easeOut(span(t, T.hulls)) * (1 - easeOut(span(t, [T.close[0], T.close[0] + 0.35])));
+    let hullIn = easeOut(span(t, T.hulls)) * (1 - easeOut(span(t, [T.close[0], T.close[0] + 0.35])));
+    if (this.hullView && t >= MATERIALIZE_SECONDS) hullIn = 1;
     const multi = this.parts.length > 1;
     const dist = Math.max(this.size.x, this.size.y, this.size.z) * this.explode * (multi ? 1 : 0.25);
     for (const p of this.parts) {

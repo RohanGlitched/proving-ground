@@ -45,6 +45,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   const [trials, setTrials] = useState<TrialSummary | null>(null);
   const [trialProgress, setTrialProgress] = useState<number | null>(null);
   const [pushes, setPushes] = useState(false);
+  const [hulls, setHulls] = useState(false);
   const [title, setTitle] = useState("Untitled course");
   const [toast, setToast] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
@@ -529,6 +530,18 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
               </div>
             )}
 
+            <label className="flex items-center gap-2 text-[13.5px]">
+              <input
+                type="checkbox"
+                checked={hulls}
+                onChange={(e) => {
+                  setHulls(e.target.checked);
+                  viewRef.current?.setShowHulls(e.target.checked);
+                }}
+                className="h-4 w-4 accent-[#2b59e8]"
+              />
+              Show what the robot feels (collision hulls)
+            </label>
             <label className="flex items-center gap-2 text-[13.5px]">
               <input type="checkbox" checked={pushes} onChange={(e) => setPushes(e.target.checked)} className="h-4 w-4 accent-[#141517]" />
               Shove the robot once per trial (120 N)

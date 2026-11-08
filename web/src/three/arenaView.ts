@@ -184,6 +184,7 @@ export class ArenaView {
     if (!this.objects.has(p.uid)) return; // removed while loading
     const mat = new Materializer(scene, { maxPoints: 4000 });
     if (opts.instant) mat.finish();
+    mat.setHullView(this.showHulls);
     entry.mat = mat;
     inner.add(mat.group);
     entry.hulls = this.makeHulls(mat);
@@ -306,6 +307,7 @@ export class ArenaView {
 
   setShowHulls(v: boolean) {
     this.showHulls = v;
+    for (const e of this.objects.values()) e.mat?.setHullView(v);
   }
 
   private tick(dt: number) {
