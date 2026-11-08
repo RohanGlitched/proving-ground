@@ -149,8 +149,239 @@
       "error": "MODEL_NOT_RIGGABLE (arms down)",
       "credits": 13,
       "measuredCredits": 13
+    },
+    "cardboard-box": {
+      "jobId": "drm4noi2w4",
+      "status": "done",
+      "startedAt": "2026-11-08T20:16:53.707Z",
+      "balanceBefore": 3383,
+      "version": "G1-Turbo",
+      "objectId": "drm4noi2w4",
+      "credits": 13,
+      "balanceAfter": 3370,
+      "measuredCredits": 13,
+      "seconds": 128,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 89,
+        "fetch-result": 12,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 9,
+        "publish": 3
+      },
+      "process": {
+        "parts": 1,
+        "tris": 17188,
+        "visualKB": 388,
+        "partsKB": 4
+      },
+      "finishedAt": "2026-11-08T20:19:02.077Z"
+    },
+    "car-tire": {
+      "jobId": "k18gtp5kno",
+      "status": "done",
+      "startedAt": "2026-11-08T20:19:04.920Z",
+      "balanceBefore": 3370,
+      "version": "G1-Turbo",
+      "objectId": "k18gtp5kno",
+      "credits": 13,
+      "balanceAfter": 3357,
+      "measuredCredits": 13,
+      "seconds": 133,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 103,
+        "fetch-result": 7,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 8,
+        "publish": 3
+      },
+      "process": {
+        "parts": 1,
+        "tris": 14376,
+        "visualKB": 388,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T20:21:18.013Z"
+    },
+    "basketball": {
+      "jobId": "5tiztzpoln",
+      "status": "done",
+      "startedAt": "2026-11-08T20:21:20.848Z",
+      "balanceBefore": 3357,
+      "version": "G1-Turbo",
+      "objectId": "5tiztzpoln",
+      "credits": 13,
+      "balanceAfter": 3343,
+      "measuredCredits": 14,
+      "seconds": 194,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 101,
+        "fetch-result": 7,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 9,
+        "publish": 3
+      },
+      "process": {
+        "parts": 1,
+        "tris": 18628,
+        "visualKB": 378,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T20:24:34.697Z"
+    },
+    "laundry-basket": {
+      "jobId": "sn0fwqv8v6",
+      "status": "done",
+      "startedAt": "2026-11-08T20:24:37.691Z",
+      "balanceBefore": 3343,
+      "version": "G1-Turbo",
+      "objectId": "sn0fwqv8v6",
+      "credits": 13,
+      "balanceAfter": 3329,
+      "measuredCredits": 14,
+      "seconds": 244,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 99,
+        "fetch-result": 7,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 9,
+        "publish": 2
+      },
+      "process": {
+        "parts": 1,
+        "tris": 16592,
+        "visualKB": 399,
+        "partsKB": 5
+      },
+      "finishedAt": "2026-11-08T20:31:35.371Z"
+    },
+    "potted-plant": {
+      "jobId": "as1gpjkird",
+      "status": "done",
+      "startedAt": "2026-11-08T20:31:38.390Z",
+      "balanceBefore": 3329,
+      "version": "G1-Turbo",
+      "objectId": "as1gpjkird",
+      "credits": 43,
+      "balanceAfter": 3285,
+      "measuredCredits": 44,
+      "seconds": 290,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 93,
+        "fetch-result": 10,
+        "upload-for-split": 10,
+        "part-split": 104,
+        "process": 16,
+        "publish": 2
+      },
+      "process": {
+        "parts": 3,
+        "tris": 24540,
+        "visualKB": 746,
+        "partsKB": 13
+      },
+      "finishedAt": "2026-11-08T20:36:28.552Z"
+    },
+    "office-chair": {
+      "jobId": "amj2b87k05",
+      "status": "done",
+      "startedAt": "2026-11-08T20:36:31.370Z",
+      "balanceBefore": 3285,
+      "version": "G1-Turbo",
+      "objectId": "amj2b87k05",
+      "credits": 43,
+      "balanceAfter": 3241,
+      "measuredCredits": 44,
+      "seconds": 385,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 89,
+        "fetch-result": 6,
+        "upload-for-split": 11,
+        "part-split": 107,
+        "process": 17,
+        "publish": 3
+      },
+      "process": {
+        "parts": 15,
+        "tris": 23836,
+        "visualKB": 547,
+        "partsKB": 68
+      },
+      "finishedAt": "2026-11-08T20:45:27.210Z"
+    },
+    "door": {
+      "jobId": "ixfts3d57e",
+      "status": "done",
+      "startedAt": "2026-11-08T20:45:29.983Z",
+      "balanceBefore": 3241,
+      "version": "G1-Turbo",
+      "credits": 41,
+      "balanceAfter": 3156,
+      "measuredCredits": 85,
+      "seconds": 25,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 88,
+        "fetch-result": 5,
+        "upload-for-articulation": 7,
+        "articulate": 212,
+        "process": 281,
+        "publish": 2
+      },
+      "finishedAt": "2026-11-08T20:56:31.342Z",
+      "objectId": "ixfts3d57e",
+      "process": {
+        "parts": 2,
+        "tris": 20476,
+        "visualKB": 354,
+        "partsKB": 3
+      }
+    },
+    "garden-gate": {
+      "jobId": "kruez0uu8r",
+      "status": "done",
+      "startedAt": "2026-11-08T20:56:59.641Z",
+      "balanceBefore": 3156,
+      "version": "G1-Turbo",
+      "objectId": "kruez0uu8r",
+      "credits": 41,
+      "balanceAfter": 3115,
+      "measuredCredits": 41,
+      "seconds": 358,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 86,
+        "fetch-result": 5,
+        "upload-for-articulation": 8,
+        "articulate": 181,
+        "process": 15,
+        "publish": 2
+      },
+      "process": {
+        "parts": 2,
+        "tris": 16360,
+        "visualKB": 471,
+        "partsKB": 4
+      },
+      "finishedAt": "2026-11-08T21:02:57.807Z"
+    },
+    "wheelie-bin": {
+      "jobId": "0t63orq912",
+      "status": "running",
+      "startedAt": "2026-11-08T21:03:02.015Z",
+      "balanceBefore": 3115,
+      "version": "G1-Turbo"
     }
   },
-  "totalCredits": 173,
+  "totalCredits": 441,
   "runs": []
 }
