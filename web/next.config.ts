@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
     resolveAlias: { module: { browser: "./src/sim/empty-module.ts" } },
   },
   outputFileTracingRoot: path.resolve(__dirname),
+  devIndicators: false,
   // the GLB pipeline (api routes) loads these at runtime instead of bundling them
   serverExternalPackages: ["sharp", "meshoptimizer", "@gltf-transform/core", "@gltf-transform/extensions", "@gltf-transform/functions"],
 };

@@ -318,7 +318,7 @@ export class Materializer {
       if (p.hull && p.edges) {
         p.hull.position.copy(p.mesh.position);
         p.edges.position.copy(p.mesh.position);
-        (p.hull.material as THREE.MeshBasicMaterial).opacity = 0.16 * hullIn;
+        (p.hull.material as THREE.MeshBasicMaterial).opacity = (this.hullView && t >= MATERIALIZE_SECONDS ? 0.3 : 0.16) * hullIn;
         (p.edges.material as THREE.LineBasicMaterial).opacity = 0.9 * hullIn;
         p.hull.visible = p.edges.visible = hullIn > 0.001;
       }
