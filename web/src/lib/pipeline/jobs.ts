@@ -101,6 +101,7 @@ export type Job = {
     tasks: Partial<Record<StageName, string>>;
     outputs?: Partial<Record<StageName, string[]>>;
     process?: Record<string, number>;
+    clip?: { name: string; duration: number };
   };
   lease?: { token: string; until: number };
   ipHash?: string;
@@ -686,6 +687,8 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
       });
       await s.put(`objects/${id}/visual.glb`, r.visual, { contentType: "model/gltf-binary" });
       await s.put(`objects/${id}/parts.json`, r.partsJson, { contentType: "application/json" });
+      const clip = r.parts.animated?.clips[0];
+      if (clip) job.work.clip = clip;
       job.work.process = { ...r.stats, volume: r.parts.volume, bboxMinX: r.parts.bbox.min[0], bboxMinY: r.parts.bbox.min[1], bboxMinZ: r.parts.bbox.min[2], bboxMaxX: r.parts.bbox.max[0], bboxMaxY: r.parts.bbox.max[1], bboxMaxZ: r.parts.bbox.max[2] };
       st.status = "done";
       st.endedAt = deps.now();
@@ -718,7 +721,7 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
         createdAt: deps.now(),
         credits: job.work.credits,
         lux3dTasks: job.work.tasks as Record<string, string>,
-        animated: job.kind === "pedestrian" ? { clip: "Walk_Loop", inPlace: true } : job.kind === "articulated" ? { clip: "articulation" } : undefined,
+        animated: job.kind === "object" ? undefined : { clip: job.work.clip?.name ?? (job.kind === "pedestrian" ? "Walk_Loop" : "articulation"), inPlace: job.kind === "pedestrian" ? true : undefined, duration: job.work.clip?.duration },
       };
       await s.putJSON(`objects/${id}/meta.json`, meta);
       await appendToLibrary(meta, s);

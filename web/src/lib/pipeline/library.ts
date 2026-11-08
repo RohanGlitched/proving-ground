@@ -29,7 +29,8 @@ export type ObjectMeta = {
   createdAt: number;
   credits: number;
   lux3dTasks: Record<string, string>;
-  animated?: { clip: string; inPlace?: boolean };
+  /** Pedestrians: the walk clip baked into visual.glb (in place: move the root along the path yourself). */
+  animated?: { clip: string; inPlace?: boolean; duration?: number };
 };
 
 export type LibraryEntry = Pick<ObjectMeta, "id" | "slug" | "name" | "kind" | "source" | "category" | "size" | "parts" | "volume" | "createdAt" | "hasInput" | "style">;

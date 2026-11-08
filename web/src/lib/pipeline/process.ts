@@ -405,7 +405,9 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
       merged.set(a, o);
       o += a.length;
     }
-    partList = [withVolume(partFrom("part-0", merged), sumMesh(nodes))];
+    // a walking person collides as their body without the outstretched arms (rest pose is a T/A-pose)
+    const body = input.inPlace ? bodyWithoutArms(merged) : merged;
+    partList = [withVolume(partFrom("part-0", body), sumMesh(nodes))];
     source = "whole";
     nodes.forEach((n, i) => n.setName(nodes.length === 1 ? "part-0" : `part-0-mesh-${i}`));
   }
@@ -485,6 +487,25 @@ function animationDuration(a: import("@gltf-transform/core").Animation): number 
     if (mm[0] > max) max = mm[0];
   }
   return max;
+}
+
+/**
+ * Rest-pose points of a person minus the arms: the arms stretch along the wider horizontal axis, so keep
+ * points within 0.12 × height of the body's centre line on that axis (shoulders to hips stay).
+ */
+export function bodyWithoutArms(p: Float64Array): Float64Array {
+  const b = bboxOf(p);
+  const h = b.max[1] - b.min[1];
+  const axis = b.max[0] - b.min[0] >= b.max[2] - b.min[2] ? 0 : 2;
+  // centre line: median of the axis coordinate over the lower half (legs and hips)
+  const lower: number[] = [];
+  for (let i = 0; i < p.length; i += 3) if (p[i + 1] < b.min[1] + h * 0.45) lower.push(p[i + axis]);
+  lower.sort((x, y) => x - y);
+  const c = lower.length ? lower[Math.floor(lower.length / 2)] : (b.min[axis] + b.max[axis]) / 2;
+  const half = 0.12 * h;
+  const out: number[] = [];
+  for (let i = 0; i < p.length; i += 3) if (Math.abs(p[i + axis] - c) <= half) out.push(p[i], p[i + 1], p[i + 2]);
+  return out.length >= 12 ? Float64Array.from(out) : p;
 }
 
 /** Bounding box (Y-up metres) and triangle count of a raw Lux3D GLB, used to decide on part-split. */
