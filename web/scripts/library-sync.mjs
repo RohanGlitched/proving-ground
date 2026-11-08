@@ -19,6 +19,8 @@ const src = localStore(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR)
 const dst = gcsStore(bucket);
 
 const lib = (await src.getJSON("library.json"))?.value ?? { items: [] };
+// comparison copies (slug suffix -g1 etc.) stay local
+lib.items = lib.items.filter((e) => !/-g1$/.test(e.slug ?? ""));
 const remote = new Set(await dst.list("objects/"));
 let copied = 0;
 for (const e of lib.items) {
