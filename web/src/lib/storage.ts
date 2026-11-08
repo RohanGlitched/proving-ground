@@ -88,7 +88,8 @@ export function localStore(root: string): Store {
         await h.close();
         break;
       } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+        // Windows answers EPERM/EBUSY while another process is deleting the lock file
+        if (!["EEXIST", "EPERM", "EBUSY", "EACCES"].includes((e as NodeJS.ErrnoException).code ?? "")) throw e;
         try {
           const st = await fs.stat(lock);
           if (Date.now() - st.mtimeMs > 10_000) await fs.rm(lock, { force: true });
@@ -102,7 +103,14 @@ export function localStore(root: string): Store {
     try {
       return await fn();
     } finally {
-      await fs.rm(lock, { force: true });
+      for (let i = 0; i < 20; i++) {
+        try {
+          await fs.rm(lock, { force: true });
+          break;
+        } catch {
+          await sleep(5);
+        }
+      }
     }
   }
 
@@ -134,7 +142,16 @@ export function localStore(root: string): Store {
         await fs.mkdir(path.dirname(file(key)), { recursive: true });
         const tmp = `${file(key)}.__tmp${process.pid}${Math.random().toString(36).slice(2, 8)}`;
         await fs.writeFile(tmp, body);
-        await fs.rename(tmp, file(key));
+        for (let i = 0; ; i++) {
+          try {
+            await fs.rename(tmp, file(key));
+            break;
+          } catch (e) {
+            // Windows: a concurrent reader can hold the target open for a moment
+            if (i > 40 || !["EPERM", "EBUSY", "EACCES"].includes((e as NodeJS.ErrnoException).code ?? "")) throw e;
+            await sleep(10);
+          }
+        }
         await fs.writeFile(metaFile(key), JSON.stringify({ generation, contentType: opts.contentType ?? "application/octet-stream" }));
         return { generation };
       });

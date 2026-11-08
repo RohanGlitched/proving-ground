@@ -72,3 +72,14 @@ test("decimateForHull keeps the extremes of a point cloud", () => {
   const has = (x, y, z) => out.some((_, i) => i % 3 === 0 && out[i] === x && out[i + 1] === y && out[i + 2] === z);
   assert.ok(has(5, 0, 0) && has(-5, 0, 0) && has(0, 5, 0));
 });
+
+test("volumes: closed whole mesh measured directly; split parts share it out", { skip }, async () => {
+  const whole = await processModel({ glb: readSample("chair.glb"), split: false });
+  assert.equal(whole.parts.parts[0].volumeMethod, "mesh");
+  assert.ok(whole.parts.volume > 0.010 && whole.parts.volume < 0.016, `chair ${whole.parts.volume} m3`);
+  const split = await processModel({ glb: readSample("chair-parts.glb"), split: true, wholeGlb: readSample("chair.glb") });
+  assert.ok(split.parts.parts.every((p) => p.volumeMethod === "mesh-share"));
+  assert.ok(Math.abs(split.parts.volume - whole.parts.volume) / whole.parts.volume < 0.01);
+  const noWhole = await processModel({ glb: readSample("chair-parts.glb"), split: true });
+  for (const p of noWhole.parts.parts) assert.ok(p.volumeMethod === "mesh" || Math.abs(p.volume - 0.6 * p.hullVolume) < 1e-6);
+});

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:sim": "node --import tsx --test \"tests/sim/*.test.mjs\"",
-    "test:pipeline": "node --import tsx --test tests/pipeline/",
+    "test:pipeline": "node --import tsx --test tests/pipeline/*.test.mjs",
     "test:pipeline:live": "node --env-file=.env.local --import tsx --test tests/pipeline/live.test.mjs"
   },
   "dependencies": {
@@ -21,6 +21,7 @@
     "meshoptimizer": "1.3.0",
     "motion": "12.23.24",
     "next": "16.4.5",
+    "qrcode": "1.5.4",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "sharp": "0.35.5",
@@ -29,6 +30,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "0.180.0",

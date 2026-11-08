@@ -11,7 +11,7 @@ let seq = 0;
  * A fake Lux3D: each task finishes after `pollsToFinish` polls. Only one task may run at a time on the
  * account (like the real one): creating a second while one runs throws the concurrency error.
  */
-function fakeLux({ pollsToFinish = 2, concurrencyFailures = 0, failOps = [] } = {}) {
+function fakeLux({ pollsToFinish = 2, concurrencyFailures = 0, failOps = [], failOnce = {} } = {}) {
   const tasks = new Map();
   const calls = { create: [], upload: 0 };
   let concurrencyLeft = concurrencyFailures;
@@ -36,6 +36,14 @@ function fakeLux({ pollsToFinish = 2, concurrencyFailures = 0, failOps = [] } = 
         t.polls++;
         if (t.polls < pollsToFinish) return { taskId: id, status: "running", rawStatus: 1, outputs: [] };
         if (failOps.includes(t.req.op)) return { taskId: id, status: "failed", rawStatus: 4, outputs: [] };
+        if (failOnce[t.req.op] && !t.passOnce) {
+          t.fail = failOnce[t.req.op];
+          delete failOnce[t.req.op];
+        } else if (!t.fail) t.passOnce = true;
+        if (t.fail) {
+          const code = t.fail;
+          return { taskId: id, status: "failed", rawStatus: 4, outputs: [{ content: JSON.stringify({ error: { code, message: "arms down" } }), isUrl: false }] };
+        }
         return { taskId: id, status: "done", rawStatus: 3, outputs: [{ content: `https://cdn.example/${t.req.op}/${id}.glb?sig=1`, isUrl: true }] };
       },
       async upload(buf, name) {
@@ -155,6 +163,7 @@ test("part-split failure falls back to the whole mesh", { skip: !hasSamples() &&
     const split = done.stages.find((s) => s.name === "part-split");
     assert.equal(split.status, "skipped");
     assert.match(split.note, /whole mesh/);
+    assert.equal(done.work.credits, 13, "a failed task is not charged");
     assert.equal((await store.getJSON(`objects/${job.id}/parts.json`)).value.parts.length, 1);
   } finally {
     cleanup();
@@ -184,6 +193,42 @@ test("small objects skip part-split; an expired result link re-runs generation o
     assert.equal(done.work.credits, 2);
   } finally {
     delete process.env.SPLIT_MIN_DIM;
+    cleanup();
+  }
+});
+
+test("pedestrian: an unriggable pose re-generates once with a stricter T-pose, then rigs and walks", { skip: !hasSamples() && "dev-samples missing" }, async () => {
+  const { store, cleanup } = tempStore();
+  const clock = fakeClock();
+  const f = fakeLux({ failOnce: { rig: "MODEL_NOT_RIGGABLE" } });
+  try {
+    const job = await createJob({ kind: "pedestrian", source: "text", input: { text: "a jogger" } }, { store, now: clock.now });
+    const done = await runToCompletion(job.id, { store, lux: f.lux, download, now: clock.now, concurrencyWaitMs: 0 }, 0);
+    assert.equal(done.status, "done", done.error);
+    assert.deepEqual(f.calls.create, ["text-to-3d", "rig", "text-to-3d", "rig", "retarget"]);
+    assert.match(f.tasks.get([...f.tasks.keys()][2]).req.prompt, /T-pose character model/);
+    assert.equal(done.work.credits, 13 + 13 + 15 + 6, "the refused rig is not charged");
+  } finally {
+    cleanup();
+  }
+});
+
+test("pedestrian: a second refusal fails the job with a plain sentence", { skip: !hasSamples() && "dev-samples missing" }, async () => {
+  const { store, cleanup } = tempStore();
+  const clock = fakeClock();
+  const f = fakeLux();
+  f.lux.getTask = (orig => async (id) => {
+    const t = await orig(id);
+    if (t.status === "done" && f.tasks.get(id).req.op === "rig") return { ...t, status: "failed", outputs: [{ content: '{"error":{"code":"MODEL_NOT_RIGGABLE"}}', isUrl: false }] };
+    return t;
+  })(f.lux.getTask);
+  try {
+    const job = await createJob({ kind: "pedestrian", source: "text", input: { text: "a jogger" } }, { store, now: clock.now });
+    const done = await runToCompletion(job.id, { store, lux: f.lux, download, now: clock.now, concurrencyWaitMs: 0 }, 0);
+    assert.equal(done.status, "failed");
+    assert.match(done.error, /skeleton/);
+    assert.equal(done.work.credits, 26);
+  } finally {
     cleanup();
   }
 });
