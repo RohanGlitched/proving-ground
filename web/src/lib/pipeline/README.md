@@ -108,6 +108,15 @@ G1 instead of Turbo costs 20 for either generator. Multi-format export is 1.
 | Function dies mid-stage | the lease expires after 4 min and the next poll carries on. |
 | Request body > 4.5 MB | Vercel rejects it before our code runs: downscale photos in the browser first. |
 
+## Exports
+
+`POST /api/objects/:id/export {format}` (stl, 3mf, usdz, fbx_zip, obj_zip) queues a one-stage job through the same
+queue: the stored raw Lux3D model (`raw/{id}/final.glb` for animated models, else `gen.glb`, never the compressed
+visual) is re-uploaded through OUS and sent to multi-format-export (1 credit). The file lands at
+`objects/{id}/export/{format}` and is served by `GET /api/objects/:id/export/:format` as `<slug>.<ext>`. A second
+request for the same file reuses the job (`objects/{id}/export/{format}.job.json`). Lux3D answers with one output per
+format slot (`NOT_REQUESTED` for the rest); the URL with the right extension is picked.
+
 ## Scripts
 
 - `scripts/library-generate.mjs`: pre-generates `scripts/library-list.json` through this pipeline, one task at a
@@ -115,5 +124,7 @@ G1 instead of Turbo costs 20 for either generator. Multi-format export is 1.
   `--version G1 --suffix -g1` (comparison copies).
 - `scripts/library-seed.mjs`: adds the two Nov 9 probe models at no cost.
 - `scripts/library-sync.mjs`: copies the local library into the bucket.
+- `scripts/library-reprocess.mjs`: re-runs processing on stored raw GLBs (no credits) after process.ts changes.
+- `scripts/pipeline-export.mjs <id> stl,usdz,…`: runs exports and prints time and size per format.
 - Tests: `npm run test:pipeline` (mocked Lux3D); `LIVE_LUX=1 npm run test:pipeline:live` (balance + an OUS
   upload, free); add `LIVE_LUX_GENERATE=1` for one image-to-3D Turbo task (1 credit).
