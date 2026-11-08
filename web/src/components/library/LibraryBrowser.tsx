@@ -213,7 +213,7 @@ export function LibraryBrowser() {
                   <div className="sheet mt-5 p-4 text-[14px] text-ink-2">
                     {open.kind === "pedestrian"
                       ? "Made with Lux3D text-to-3D, then Lux3D rig and Lux3D retarget (Walk_Loop). In the arena it walks across the course as a moving obstacle that pushes the robot."
-                      : "Made with Lux3D text-to-3D, then Lux3D articulation from a sentence describing the motion: a URDF with a real hinge joint and its limits. The hinge swings here in the viewer; in the arena it stands as one solid for now."}
+                      : "Made with Lux3D text-to-3D, then Lux3D articulation from a sentence describing the motion: a URDF with a real hinge joint and its limits. In the arena the hinge is a real MuJoCo joint: the robot can push it open."}
                   </div>
                 ) : (
                 <div className="sheet mt-5 p-4">

@@ -8,7 +8,7 @@ import { makeEngine, WEB } from '../tests/sim/helpers.mjs';
 
 const base = process.argv[2] || 'https://proving-ground-snowy.vercel.app';
 const lib = await (await fetch(`${base}/api/library`)).json();
-const items = lib.items.filter((i) => i.kind === 'object');
+const items = lib.items.filter((i) => i.kind === 'object' || i.kind === 'articulated');
 const e = await makeEngine('/trips');
 const out = {};
 const rows = [];
@@ -17,10 +17,10 @@ for (const it of items) {
   const parts = doc.parts.map((p) => {
     const s = p.points, o = new Float32Array(s.length);
     for (let i = 0; i < s.length; i += 3) { o[i] = s[i]; o[i + 1] = -s[i + 2]; o[i + 2] = s[i + 1]; }
-    return { points: o, name: p.name };
+    return { points: o, name: p.name, ...(p.volume > 0 ? { meshVolume: p.volume } : {}) };
   });
   const mass = doc.volume ? doc.volume * defaultDensity(it) : undefined;
-  const scene = { objects: [{ id: it.id, name: it.name, parts, x: 1.4, y: 0, yaw: 0.3, mass }], goal: { x: 3.6, y: 0 }, start: { x: 0, y: 0, yaw: 0 } };
+  const scene = { objects: [{ id: it.id, name: it.name, parts, x: 1.4, y: 0, yaw: it.kind === 'articulated' ? -1.5708 : 0.3, mass, ...(doc.joints?.length ? { joints: doc.joints } : {}) }], goal: { x: 3.6, y: 0 }, start: { x: 0, y: 0, yaw: 0 } };
   const s = e.runTrials({ scene, n: 10, seed: 11, mode: 'blind', jitter: { startPos: 0.1, startYaw: 0.17, objectPos: 0.1, objectYaw: 0.6 }, maxSeconds: 14 });
   const falls = s.trials.filter((t) => t.result === 'fell').length;
   const timeouts = s.trials.filter((t) => t.result === 'timeout').length;

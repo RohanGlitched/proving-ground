@@ -37,7 +37,8 @@ export const HOW = {
     "Mass comes from the closed mesh volume and a density you can change. Lux3D predicts size, not weight.",
     "The arms are welded in the elbows-forward pose of Unitree's 12-joint training model, the model the policy was trained on. Changing them would change the physics the policy expects, so they stay; the real G1 swings its arms, this one cannot catch itself with them.",
     "Lux3D allows one generation at a time per account, so new objects can queue for a few minutes when the site is busy.",
-    "Movers (walking people, swinging doors) are kinematic: they push the robot but nothing pushes them back.",
+    "Walking people are kinematic: they push the robot but nothing pushes them back. Hinged objects are real MuJoCo hinges with Lux3D's limits: the robot can push a door open from the side it opens toward, and meets a wall from the other.",
+    "A Lux3D door or gate frame is one concave part whose convex hull would fill the opening, so in the arena the frame collides as two posts (sized from its measured mesh volume); the leaf collides as its own hull.",
   ],
   changelog: [
     ["Nov 9", "Probes (Lux3D upload, image and text to 3D, part-split, price quotes), then the whole build: robot controller in a worker, arena, ten-run trials, planner, library with trip tests, gauntlet, phone pairing, walking people, robot-ready packs."],

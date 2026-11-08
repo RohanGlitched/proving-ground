@@ -10,7 +10,7 @@ import {
 import { Rng, mixSeed } from './rng';
 import { parseRobotVisuals, physicsXml, type RobotAssets } from './robot';
 import type {
-  CollisionPart, Command, ContactEvent, FrameLayout, MoverSpec, NavMode, Pose2, PushEvent, RobotStatus, RobotVisual, SceneObject,
+  ArticulationJoint, CollisionPart, Command, ContactEvent, FrameLayout, MoverSpec, NavMode, Pose2, PushEvent, RobotStatus, RobotVisual, SceneObject,
   SceneSpec, StepInfo, TrialOptions, TrialResult, TrialRun, TrialSummary,
 } from './types';
 
@@ -30,7 +30,7 @@ export const DEFAULT_DENSITY = 400; // kg/m^3 over hull volume
 export const MASS_MIN = 0.05, MASS_MAX = 80;
 export const MAX_PART_VERTS = 96; // hull vertices kept per part (MuJoCo hulls them again)
 
-interface PreparedPart { verts: Float32Array; volume: number; minZ: number; maxZ: number }
+interface PreparedPart { verts: Float32Array; volume: number; minZ: number; maxZ: number; fill?: number }
 
 interface Entity {
   index: number;
@@ -48,6 +48,8 @@ interface Entity {
   volume: number;
   radius: number; // max xy distance of any hull vertex from the origin
   mover?: MoverSpec;
+  /** articulated objects: one entry per hinge (child body, joint qpos address) */
+  hinges?: { joint: ArticulationJoint; body: number; qadr: number; name: string }[];
 }
 
 const prepCache = new WeakMap<CollisionPart, PreparedPart | null>();
@@ -67,7 +69,7 @@ export function prepareParts(parts: CollisionPart[]): PreparedPart[] {
           for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], h.verts[i + k]); mx[k] = Math.max(mx[k], h.verts[i + k]); }
           minZ = Math.min(minZ, h.verts[i + 2]); maxZ = Math.max(maxZ, h.verts[i + 2]);
         }
-        if (Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) >= 0.01) r = { verts: h.verts, volume: p.volume ?? h.volume, minZ, maxZ };
+        if (Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) >= 0.01) r = { verts: h.verts, volume: p.volume ?? h.volume, minZ, maxZ, ...(p.meshVolume && h.volume > 0 ? { fill: p.meshVolume / h.volume } : {}) };
       }
       prepCache.set(p, r);
     }
@@ -77,6 +79,30 @@ export function prepareParts(parts: CollisionPart[]): PreparedPart[] {
 }
 
 const fmt = (v: number) => String(Math.round(v * 1e5) / 1e5);
+
+/**
+ * A door or gate frame is one concave Lux3D part, and its convex hull would fill the doorway. When the mesh
+ * fills under 45% of its hull, collide with two posts at the ends of its width instead (full height and
+ * depth, thickness from the measured mesh volume). Returns null for solid parts.
+ */
+function framePosts(p: PreparedPart): PreparedPart[] | null {
+  if (p.fill === undefined || p.fill >= 0.45) return null;
+  const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < p.verts.length; i += 3) for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], p.verts[i + k]); mx[k] = Math.max(mx[k], p.verts[i + k]); }
+  const ext = [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]];
+  const w = ext[0] >= ext[1] ? 0 : 1, d = 1 - w; // width and depth axes in the floor plane
+  const t = Math.min(ext[w] * 0.25, Math.max(0.04, p.volume / Math.max(1e-6, 2 * ext[2] * ext[d])));
+  const box = (a0: number, a1: number): PreparedPart => {
+    const v: number[] = [];
+    for (const a of [a0, a1]) for (const b of [mn[d], mx[d]]) for (const z of [mn[2], mx[2]]) {
+      const pt = [0, 0, z];
+      pt[w] = a; pt[d] = b;
+      v.push(pt[0], pt[1], pt[2]);
+    }
+    return { verts: Float32Array.from(v), volume: p.volume / 2, minZ: mn[2], maxZ: mx[2] };
+  };
+  return [box(mn[w], mn[w] + t), box(mx[w] - t, mx[w])];
+}
 const yawQuat = (yaw: number) => [Math.cos(yaw / 2), 0, 0, Math.sin(yaw / 2)];
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -176,8 +202,21 @@ export class Engine {
     const assets: string[] = [];
     const bodies: string[] = [];
     const entities: Entity[] = [];
-    const add = (kind: 'object' | 'mover', o: SceneObject | MoverSpec, fixed: boolean, mover?: MoverSpec) => {
-      const parts = prepareParts(o.parts);
+    const add = (kind: 'object' | 'mover', o: SceneObject | MoverSpec, fixedIn: boolean, mover?: MoverSpec) => {
+      // articulated objects: the base stands fixed, child parts hang on joints (single level, base = parts not moved by any joint)
+      const joints = !mover ? ((o as SceneObject).joints ?? []).filter((j) => j.child >= 0 && j.child < o.parts.length) : [];
+      const fixed = fixedIn || joints.length > 0;
+      const prepOne = o.parts.map((p) => prepareParts([p])[0] ?? null);
+      // articulated base parts that are frames collide as two posts (see framePosts)
+      const prepAll: (PreparedPart | null)[] = [];
+      const srcIndex: number[] = [];
+      prepOne.forEach((p, pi) => {
+        const posts = joints.length && p && !joints.some((j) => j.child === pi) ? framePosts(p) : null;
+        for (const q of posts ?? [p]) { prepAll.push(q); srcIndex.push(pi); }
+      });
+      const childOf = new Map<number, number>(); // part index -> joint index
+      joints.forEach((j, ji) => childOf.set(j.child, ji));
+      const parts = prepAll.filter((p): p is PreparedPart => !!p);
       const index = entities.length;
       const tag = `pg_${kind[0]}${index}`;
       let minZ = Infinity, volume = 0, radius = 0;
@@ -201,15 +240,34 @@ export class Engine {
       entities.push(ent);
       if (!parts.length) return;
       const geoms: string[] = [];
-      parts.forEach((p, k) => {
+      const childGeoms: string[][] = joints.map(() => []);
+      // Y-up object frame (parts.json) -> Z-up body frame, the same turn the parts already had
+      const zup = (v: number[]) => [v[0], -v[2], v[1]];
+      let k = 0;
+      prepAll.forEach((p, pi) => {
+        if (!p) return;
+        const ji = childOf.get(srcIndex[pi]);
+        const off = ji === undefined ? [0, 0, 0] : zup(joints[ji].pivot);
         const mname = `${tag}_m${k}`;
         const vs: string[] = [];
-        for (let i = 0; i < p.verts.length; i++) vs.push(fmt(p.verts[i]));
+        for (let i = 0; i < p.verts.length; i++) vs.push(fmt(p.verts[i] - off[i % 3]));
         assets.push(`<mesh name="${mname}" vertex="${vs.join(' ')}"/>`);
-        geoms.push(`<geom name="${tag}_g${k}" type="mesh" mesh="${mname}" mass="${fmt(Math.max(1e-4, (mass * p.volume) / Math.max(volume, 1e-9)))}" friction="${fr} 0.005 0.0001" priority="1" condim="3" rgba="0.8 0.6 0.4 1"/>`);
+        const g = `<geom name="${tag}_g${k}" type="mesh" mesh="${mname}" mass="${fmt(Math.max(1e-4, (mass * p.volume) / Math.max(volume, 1e-9)))}" friction="${fr} 0.005 0.0001" priority="1" condim="3" rgba="0.8 0.6 0.4 1"/>`;
+        if (ji === undefined) geoms.push(g);
+        else childGeoms[ji].push(g);
+        k++;
       });
+      const kids = joints.map((j, ji) => {
+        if (!childGeoms[ji].length) return '';
+        const pv = zup(j.pivot), ax = zup(j.axis);
+        const slide = j.type === 'prismatic';
+        const lo = Number.isFinite(j.lower) ? j.lower : 0, hi = Number.isFinite(j.upper) ? j.upper : 0;
+        const limited = j.type !== 'continuous' && hi > lo;
+        return `<body name="${tag}_c${ji}" pos="${pv.map(fmt).join(' ')}"><joint name="${tag}_h${ji}" type="${slide ? 'slide' : 'hinge'}" axis="${ax.map(fmt).join(' ')}"${limited ? ` limited="true" range="${fmt(lo)} ${fmt(hi)}"` : ''} damping="${slide ? 20 : 1.2}" frictionloss="0.3" armature="0.02"/>${childGeoms[ji].join('')}</body>`;
+      });
+      if (joints.length) ent.hinges = joints.map((j, ji) => ({ joint: j, body: -1, qadr: -1, name: `${tag}_c${ji}` })).filter((h, ji) => childGeoms[ji].length > 0);
       const head = `<body name="${tag}" pos="${fmt(x)} ${fmt(y)} ${fmt(z)}" quat="${q.map(fmt).join(' ')}"${fixed ? ' mocap="true"' : ''}>`;
-      bodies.push(`${head}${fixed ? '' : `<freejoint name="${tag}_j"/>`}${geoms.join('')}</body>`);
+      bodies.push(`${head}${fixed ? '' : `<freejoint name="${tag}_j"/>`}${geoms.join('')}${kids.join('')}</body>`);
     };
     for (const o of spec.objects) add('object', o, !!o.fixed);
     for (const m of spec.movers ?? []) add('mover', m, true, m);
@@ -267,23 +325,32 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
       e.bodyId = mj.mj_name2id(model, BODY, `pg_${e.kind[0]}${e.index}`);
       if (e.fixed) e.mocapId = mocapid[e.bodyId];
       else { const j = jntadr[e.bodyId]; e.qadr = qposadr[j]; e.vadr = dofadr[j]; }
+      for (const h of e.hinges ?? []) {
+        h.body = mj.mj_name2id(model, BODY, h.name);
+        h.qadr = h.body >= 0 ? qposadr[jntadr[h.body]] : -1;
+      }
     }
     const gb = model.geom_bodyid as Int32Array;
     const bodyOwner = new Int32Array(model.nbody).fill(-1);
     for (const b of this.robotBodyIds) bodyOwner[b] = -2;
-    for (const e of entities) if (e.bodyId >= 0) bodyOwner[e.bodyId] = e.index;
+    for (const e of entities) {
+      if (e.bodyId >= 0) bodyOwner[e.bodyId] = e.index;
+      for (const h of e.hinges ?? []) if (h.body >= 0) bodyOwner[h.body] = e.index;
+    }
     this.geomOwner = new Int32Array(model.ngeom);
     for (let g = 0; g < model.ngeom; g++) this.geomOwner[g] = bodyOwner[gb[g]];
 
     const objIds = entities.filter((e) => e.kind === 'object').map((e) => e.id);
     const movIds = entities.filter((e) => e.kind === 'mover').map((e) => e.id);
     this.visBody = Int32Array.from(this.robotVisuals.map((v) => mj.mj_name2id(model, BODY, v.body)));
+    const hinges = entities.filter((e) => e.kind === 'object').flatMap((e) => (e.hinges ?? []).filter((h) => h.qadr >= 0).map((h) => ({ id: e.id, joint: h.joint })));
     this.layout = {
-      length: HEADER + 7 * (this.robotVisuals.length + objIds.length + movIds.length),
+      length: HEADER + 7 * (this.robotVisuals.length + objIds.length + movIds.length) + hinges.length,
       header: HEADER,
       robotGeoms: this.robotVisuals.length,
       objects: objIds,
       movers: movIds,
+      ...(hinges.length ? { hinges } : {}),
     };
 
     if (old) {
@@ -674,6 +741,7 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     };
     for (const e of this.entities) if (e.kind === 'object') put(e);
     for (const e of this.entities) if (e.kind === 'mover') put(e);
+    for (const e of this.entities) if (e.kind === 'object') for (const h of e.hinges ?? []) if (h.qadr >= 0) buf[o++] = q[h.qadr];
     return buf;
   }
 

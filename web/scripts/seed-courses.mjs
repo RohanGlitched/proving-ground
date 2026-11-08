@@ -26,6 +26,9 @@ const COURSES = [
   { title: 'Office after hours', mode: 'blind', pushes: true, objects: [['office-chair', 1.6, 0.1, 0.7], ['bar-stool', 2.6, -0.25, 0], ['floor-lamp', 3.4, 0.3, 0]] },
   { title: 'One banana peel', mode: 'blind', pushes: false, objects: [['banana-peel', 1.5, 0.0, 0.4]] },
   { title: 'The rolled rug', mode: 'blind', pushes: false, objects: [['rolled-rug', 1.8, 0.0, 1.57]] },
+  { title: 'Push the door open', mode: 'blind', pushes: false, objects: [['door', 1.6, 0.0, -1.5708]] },
+  { title: 'The gate opens the other way', mode: 'blind', pushes: false, objects: [['garden-gate', 1.6, 0.0, 1.5708]] },
+  { title: 'Gate, then a cone', mode: 'blind', pushes: false, objects: [['garden-gate', 1.5, 0.0, -1.5708], ['traffic-cone', 2.8, 0.1, 0]] },
   { title: 'Bin day (planner)', mode: 'planner', pushes: false, objects: [['wheelie-bin', 1.7, 0.1, 0.3], ['wheelie-bin', 2.9, -0.25, 1.0]] },
 ];
 
@@ -36,9 +39,9 @@ async function physics(id) {
   const parts = doc.parts.map((p) => {
     const s = p.points, o = new Float32Array(s.length);
     for (let i = 0; i < s.length; i += 3) { o[i] = s[i]; o[i + 1] = -s[i + 2]; o[i + 2] = s[i + 1]; }
-    return { points: o, name: p.name };
+    return { points: o, name: p.name, ...(p.volume > 0 ? { meshVolume: p.volume } : {}) };
   });
-  return { parts, volume: doc.volume ?? null };
+  return { parts, volume: doc.volume ?? null, joints: doc.joints };
 }
 
 for (const c of COURSES) {
@@ -48,7 +51,7 @@ for (const c of COURSES) {
   const sceneObjects = [];
   for (const [i, o] of objs.entries()) {
     const ph = await physics(o.e.id);
-    sceneObjects.push({ id: `o${i}`, name: o.e.name, parts: ph.parts, x: o.x, y: o.y, yaw: o.yaw, mass: ph.volume ? ph.volume * defaultDensity(o.e) : undefined });
+    sceneObjects.push({ id: `o${i}`, name: o.e.name, parts: ph.parts, x: o.x, y: o.y, yaw: o.yaw, mass: ph.volume ? ph.volume * defaultDensity(o.e) : undefined, ...(ph.joints?.length ? { joints: ph.joints } : {}) });
   }
   const seed = 1000 + COURSES.indexOf(c);
   const goal = { x: 4.5, y: 0 };

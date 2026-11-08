@@ -31,7 +31,7 @@ export async function runTripTest(objectId: string, name: string, slug?: string)
   try {
     const ph = await getPhysics(objectId);
     const s = await sim.runTrials({
-      scene: { objects: [{ id: objectId, name, parts: ph.parts, x: 1.4, y: 0, yaw: 0.3, mass: ph.volume ? ph.volume * defaultDensity({ slug }) : undefined }], goal: { x: 3.6, y: 0 }, start: { x: 0, y: 0, yaw: 0 } },
+      scene: { objects: [{ id: objectId, name, parts: ph.parts, x: 1.4, y: 0, yaw: ph.joints ? -1.5708 : 0.3, mass: ph.volume ? ph.volume * defaultDensity({ slug }) : undefined, ...(ph.joints ? { joints: ph.joints } : {}) }], goal: { x: 3.6, y: 0 }, start: { x: 0, y: 0, yaw: 0 } },
       n: 10,
       seed: 11,
       mode: "blind",

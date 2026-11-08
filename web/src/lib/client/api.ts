@@ -1,6 +1,6 @@
 // Browser-side calls to our API. Types mirror src/lib/pipeline (kept structural so this file
 // never imports server code into the client bundle).
-import type { CollisionPart } from "@/sim/types";
+import type { ArticulationJoint, CollisionPart } from "@/sim/types";
 
 export type LibraryEntry = {
   id: string;
@@ -40,7 +40,7 @@ export type PartsDoc = {
   unit: "m";
   source: "part-split" | "whole";
   bbox: { min: number[]; max: number[] };
-  parts: { name: string; count: number; points: number[] }[];
+  parts: { name: string; count: number; points: number[]; volume?: number }[];
 };
 
 export const objectUrl = (id: string, file: "visual.glb" | "parts.json" | "meta.json" | "input.jpg" | "thumb.webp") => `/api/objects/${id}/${file}`;
@@ -81,14 +81,18 @@ export async function getParts(id: string): Promise<CollisionPart[]> {
   return (await getPhysics(id)).parts;
 }
 
-const physicsCache = new Map<string, Promise<{ parts: CollisionPart[]; volume: number | null }>>();
+const physicsCache = new Map<string, Promise<{ parts: CollisionPart[]; volume: number | null; joints?: ArticulationJoint[] }>>();
 /** Collision parts plus the closed-mesh volume (m³) when the pipeline measured it. Mass = volume × density. */
 export function getPhysics(id: string) {
   let p = physicsCache.get(id);
   if (!p) {
     p = fetch(objectUrl(id, "parts.json"))
-      .then((r) => json<PartsDoc & { volume?: number }>(r))
-      .then((doc) => ({ parts: convertParts(doc), volume: typeof doc.volume === "number" && doc.volume > 0 ? doc.volume : null }));
+      .then((r) => json<PartsDoc & { volume?: number; joints?: ArticulationJoint[] }>(r))
+      .then((doc) => ({
+        parts: convertParts(doc),
+        volume: typeof doc.volume === "number" && doc.volume > 0 ? doc.volume : null,
+        ...(doc.joints?.length ? { joints: doc.joints } : {}),
+      }));
     p.catch(() => physicsCache.delete(id));
     physicsCache.set(id, p);
   }
@@ -104,7 +108,7 @@ function convertParts(doc: PartsDoc): CollisionPart[] {
       out[i + 1] = -src[i + 2];
       out[i + 2] = src[i + 1];
     }
-    return { points: out, name: p.name };
+    return { points: out, name: p.name, ...(p.volume && p.volume > 0 ? { meshVolume: p.volume } : {}) };
   });
 }
 

@@ -7,6 +7,8 @@ export interface CollisionPart {
   name?: string;
   /** Hull volume in m^3. Filled in by prepareParts() if missing. */
   volume?: number;
+  /** Closed mesh volume (m³) from the pipeline, when known; used to spot concave frames (see framePosts). */
+  meshVolume?: number;
 }
 
 /** A placed object. The object frame origin sits at (x, y, z) with rotation yaw about Z. */
@@ -26,6 +28,20 @@ export interface SceneObject {
   /** Fixed objects never move (walls, counters). Built as mocap bodies so trials can jitter them. */
   fixed?: boolean;
   friction?: number; // default 0.8
+  /**
+   * Lux3D articulation joints (from parts.json, Y-up object frame like the GLB). When present the object's
+   * base stands fixed and each child part hangs on a damped hinge (or slide) the robot can push.
+   */
+  joints?: ArticulationJoint[];
+}
+
+export interface ArticulationJoint {
+  type: string; // "revolute" | "continuous" | "prismatic"
+  child: number; // part index (parts.json order)
+  pivot: [number, number, number];
+  axis: [number, number, number];
+  lower: number;
+  upper: number;
 }
 
 export interface PathKey { x: number; y: number; yaw: number; t: number }
@@ -160,6 +176,8 @@ export interface FrameLayout {
   robotGeoms: number;
   objects: string[]; // SceneObject ids in scene order
   movers: string[]; // MoverSpec ids in scene order
+  /** One float per hinge after the mover poses: the joint position (rad or m), in this order. */
+  hinges?: { id: string; joint: ArticulationJoint }[];
 }
 
 /**

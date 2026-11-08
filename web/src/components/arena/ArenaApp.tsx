@@ -300,7 +300,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
           const ph = await physics(p.objectId);
           const density = p.density ?? defaultDensity(byId.get(p.objectId));
           // mass from the closed mesh volume when known (hull volume overstates hollow shapes)
-          return { id: p.uid, name: p.name, parts: ph.parts, x: p.x, y: p.y, yaw: p.yaw, density, mass: ph.volume ? ph.volume * density : undefined };
+          return { id: p.uid, name: p.name, parts: ph.parts, x: p.x, y: p.y, yaw: p.yaw, density, mass: ph.volume ? ph.volume * density : undefined, ...(ph.joints ? { joints: ph.joints } : {}) };
         }),
       );
       const movers = await Promise.all(
@@ -308,8 +308,9 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       );
       if (v !== sceneVersion.current) return;
       const scene: SceneSpec = { objects: objs, movers, start, goal };
-      await sim.setScene(scene);
+      const layout = await sim.setScene(scene);
       view.setOrder(things.map((p) => p.uid), walkers.map((p) => p.uid));
+      view.setHinges(layout.hinges ?? []);
       sim.setMode(mode);
       if (mode === "planner") view.setPath(await sim.path());
       else view.setPath(null);
@@ -402,7 +403,8 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       return;
     }
     const spot = freeSpot(placed.map((p) => ({ ...p, r: radiusOf(byId.get(p.objectId)) })), goal, start, radiusOf(e));
-    const p: Placed = { uid: newUid(), objectId: e.id, name: e.name, x: spot.x, y: spot.y, yaw: (n * 0.7) % Math.PI };
+    // hinged things face the robot so they open away from it (it can push them open)
+    const p: Placed = { uid: newUid(), objectId: e.id, name: e.name, x: spot.x, y: spot.y, yaw: e.kind === "articulated" ? -Math.PI / 2 : (n * 0.7) % Math.PI };
     setPlaced((ps) => [...ps, p]);
     setSelected(p.uid);
     viewRef.current?.select(p.uid);

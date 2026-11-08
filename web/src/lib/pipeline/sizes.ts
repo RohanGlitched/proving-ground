@@ -7,7 +7,7 @@ export const TYPICAL_MAX_DIM: Record<string, number> = {
   skateboard: 0.8, toolbox: 0.5, watermelon: 0.32, "stack-of-books": 0.3, "bar-stool": 0.75, "floor-lamp": 1.6,
   "side-table": 0.6, "bean-bag": 0.9, "rolled-rug": 1.8, "folding-chair": 0.85, "step-stool": 0.45, "coat-rack": 1.75,
   "standing-fan": 1.3, ottoman: 0.6, "toy-truck": 0.4, "teddy-bear": 0.45, "block-pile": 0.4, "rocking-horse": 0.9,
-  "toy-train": 0.5, football: 0.3, hurdle: 1.2, kettlebell: 0.3, "yoga-ball": 0.65, "agility-ladder": 4,
+  "toy-train": 0.5, football: 0.3, hurdle: 1.2, kettlebell: 0.3, "yoga-ball": 0.65, "agility-ladder": 1.5,
   rock: 0.5, log: 1.2, "fire-hydrant": 0.75, "trash-can": 0.9, mailbox: 1.2, bollard: 0.9, "garden-gnome": 0.4,
   wheelbarrow: 1.5, "shopping-cart": 1.0, "wooden-pallet": 1.2, sawhorse: 1.0, barrel: 0.9, "cinder-block": 0.4,
   sandbag: 0.6, bicycle: 1.75, pumpkin: 0.4, pineapple: 0.3, "pizza-boxes": 0.4, suitcase: 0.7, "guitar-case": 1.1,

@@ -41,6 +41,7 @@ type Part = {
   dir: THREE.Vector3;
   center: THREE.Vector3;
   reveal: { value: number };
+  name: string;
 };
 
 /** Build a revealable copy of a mesh material: a scan line sweeps up through the object. */
@@ -192,7 +193,7 @@ export class Materializer {
           }
         }
       }
-      this.parts.push({ mesh, hull, edges, dir, center, reveal });
+      this.parts.push({ mesh, hull, edges, dir, center, reveal, name: m.name });
       this.group.add(mesh);
       if (hull) this.group.add(hull);
       if (edges) this.group.add(edges);
@@ -321,6 +322,31 @@ export class Materializer {
         (p.hull.material as THREE.MeshBasicMaterial).opacity = (this.hullView && t >= MATERIALIZE_SECONDS ? 0.3 : 0.16) * hullIn;
         (p.edges.material as THREE.LineBasicMaterial).opacity = 0.9 * hullIn;
         p.hull.visible = p.edges.visible = hullIn > 0.001;
+      }
+    }
+  }
+
+  /**
+   * Pose the meshes of part `child` (GLB nodes "part-N" / "part-N-mesh-K") at joint position v: a rotation of
+   * v radians about the axis through the pivot, or a slide of v metres along it (Y-up object frame).
+   */
+  poseChild(child: number, joint: { type: string; pivot: number[]; axis: number[] }, v: number) {
+    const name = `part-${child}`;
+    const axis = new THREE.Vector3(joint.axis[0], joint.axis[1], joint.axis[2]).normalize();
+    const pivot = new THREE.Vector3(joint.pivot[0], joint.pivot[1], joint.pivot[2]);
+    const qr = new THREE.Quaternion();
+    const pos = new THREE.Vector3();
+    if (joint.type === "prismatic") pos.copy(axis).multiplyScalar(v);
+    else {
+      qr.setFromAxisAngle(axis, v);
+      pos.copy(pivot).sub(pivot.clone().applyQuaternion(qr));
+    }
+    for (const p of this.parts) {
+      if (p.name !== name && !p.name.startsWith(`${name}-mesh-`)) continue;
+      for (const o of [p.mesh, p.hull, p.edges]) {
+        if (!o) continue;
+        o.position.copy(pos);
+        o.quaternion.copy(qr);
       }
     }
   }

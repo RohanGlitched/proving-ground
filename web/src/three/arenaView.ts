@@ -129,6 +129,7 @@ export class ArenaView {
   private objects = new Map<string, ObjEntry>();
   private order: string[] = []; // object uids in sim scene order
   private moverOrder: string[] = [];
+  private hinges: { id: string; joint: import("@/sim/types").ArticulationJoint }[] = [];
   private movers = new Map<string, { root: THREE.Group; mixer: THREE.AnimationMixer | null; lift: number }>();
   private goal = goalFlag();
   private start = startPad();
@@ -324,6 +325,16 @@ export class ArenaView {
       mjQuat(q, buf[o + 3], buf[o + 4], buf[o + 5], buf[o + 6]);
       m.root.quaternion.copy(q).multiply(YUP_TO_ZUP);
     }
+    // hinged parts: rotate (or slide) the child part about its pivot, in the GLB's own Y-up frame
+    const hbase = mbase + this.moverOrder.length * 7;
+    for (let i = 0; i < this.hinges.length; i++) {
+      const { id, joint } = this.hinges[i];
+      const e = this.objects.get(id);
+      if (!e?.mat || !e.mat.done) continue;
+      const v = buf[hbase + i];
+      if (!Number.isFinite(v)) continue;
+      e.mat.poseChild(joint.child, joint, v);
+    }
 
   }
 
@@ -419,6 +430,11 @@ export class ArenaView {
   /** the fall: a quick zoom punch and a short camera shake */
   impact() {
     this.impactT = 1;
+  }
+
+  /** Lux3D articulation: which object parts swing, in the order their angles follow the mover poses */
+  setHinges(h: { id: string; joint: import("@/sim/types").ArticulationJoint }[]) {
+    this.hinges = h;
   }
 
   setShowHulls(v: boolean) {
