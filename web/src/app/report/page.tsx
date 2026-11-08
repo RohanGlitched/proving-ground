@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Target, Stamp } from "@/components/ui/marks";
 import { REPORT } from "@/lib/report";
+import { readLibrary } from "@/lib/pipeline/library";
+
+export const dynamic = "force-dynamic";
 import "./report.css";
 
 export const metadata: Metadata = {
@@ -32,7 +35,16 @@ function Img({ src, alt, className = "" }: { src: string; alt: string; className
   return <img src={`/report/${src}`} alt={alt} className={`report-img ${className}`} />;
 }
 
-export default function ReportPage() {
+export default async function ReportPage() {
+  const lib = await readLibrary().catch(() => ({ items: [] as { kind: string; parts: number; source: string }[] }));
+  const objects = lib.items.filter((i) => i.kind === "object");
+  const stats = {
+    made: lib.items.length,
+    split: objects.filter((i) => i.parts > 1).length,
+    parts: objects.reduce((n, i) => n + i.parts, 0),
+    people: lib.items.filter((i) => i.kind === "pedestrian").length,
+    photo: lib.items.filter((i) => i.source === "photo").length,
+  };
   return (
     <main className="report">
       {/* 1 cover */}
@@ -110,6 +122,13 @@ export default function ReportPage() {
             </tbody>
           </table>
           <div className="space-y-5 text-[20px] leading-snug">
+            <div className="report-card grid grid-cols-2 gap-x-6 gap-y-2 text-[18px]">
+              <div className="col-span-2 text-[15px] font-semibold text-ink-3">The library right now, all made by Lux3D</div>
+              <div><span className="data text-[30px]">{stats.made}</span> objects and people</div>
+              <div><span className="data text-[30px]">{stats.parts}</span> collision parts</div>
+              <div><span className="data text-[30px]">{stats.split}</span> split by part-split</div>
+              <div><span className="data text-[30px]">{stats.people}</span> rigged walkers</div>
+            </div>
             {REPORT.pipelineNotes.map((t) => (
               <p key={t}>{t}</p>
             ))}
