@@ -8,8 +8,8 @@ import { LibraryDrawer, sizeLabel } from "./LibraryDrawer";
 import { ResultsSheet } from "./ResultsSheet";
 import { createArenaSim, type ArenaSim, type FrameHeader } from "./simAdapter";
 import type { ArenaView, Placement } from "@/three/arenaView";
-import { getLibrary, getParts, loadCourse, objectUrl, postResult, saveCourse, type LibraryEntry, type CourseDoc } from "@/lib/client/api";
-import type { CollisionPart, ContactEvent, SceneSpec, TrialSummary } from "@/sim/types";
+import { getLibrary, getPhysics, loadCourse, objectUrl, postResult, saveCourse, type LibraryEntry, type CourseDoc } from "@/lib/client/api";
+import type { ContactEvent, SceneSpec, TrialSummary } from "@/sim/types";
 
 type Mode = "blind" | "planner" | "manual";
 type Placed = Placement & { density?: number };
@@ -27,7 +27,6 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<ArenaView | null>(null);
   const simRef = useRef<ArenaSim | null>(null);
-  const partsCache = useRef(new Map<string, Promise<CollisionPart[]>>());
   const headerRef = useRef<FrameHeader | null>(null);
 
   const [boot, setBoot] = useState<"loading" | "ready" | "error">("loading");
@@ -165,14 +164,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   }, [boot, courseId, libLoading, library, say, addId]);
 
   // ---- keep the view and the physics scene in sync with placements ----
-  const parts = useCallback((objectId: string) => {
-    let p = partsCache.current.get(objectId);
-    if (!p) {
-      p = getParts(objectId);
-      partsCache.current.set(objectId, p);
-    }
-    return p;
-  }, []);
+  const physics = useCallback((objectId: string) => getPhysics(objectId), []);
 
   const rebuild = useCallback(
     async (opts: { keepRunning?: boolean } = {}) => {
@@ -181,7 +173,12 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       if (!sim || !view) return;
       const v = ++sceneVersion.current;
       const objs = await Promise.all(
-        placed.map(async (p) => ({ id: p.uid, name: p.name, parts: await parts(p.objectId), x: p.x, y: p.y, yaw: p.yaw, density: p.density })),
+        placed.map(async (p) => {
+          const ph = await physics(p.objectId);
+          const density = p.density ?? 400;
+          // mass from the closed mesh volume when known (hull volume overstates hollow shapes)
+          return { id: p.uid, name: p.name, parts: ph.parts, x: p.x, y: p.y, yaw: p.yaw, density, mass: ph.volume ? ph.volume * density : undefined };
+        }),
       );
       if (v !== sceneVersion.current) return;
       const scene: SceneSpec = { objects: objs, start, goal };
@@ -195,7 +192,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
         setRunning(false);
       }
     },
-    [placed, parts, start, goal, mode],
+    [placed, physics, start, goal, mode],
   );
 
   useEffect(() => {

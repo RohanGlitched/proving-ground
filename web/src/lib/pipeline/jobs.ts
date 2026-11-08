@@ -48,6 +48,7 @@ export type Stage = {
   credits?: number;
   attempts?: number;
   reruns?: number;
+  lastCredits?: number;
   note?: string;
 };
 
@@ -63,6 +64,8 @@ export type JobInput = {
   faceCount?: number;
   /** false = never part-split; undefined = decide by size. */
   split?: boolean;
+  /** Pedestrians: 1 after the rigger refused the first pose. */
+  poseAttempt?: number;
   /** Library entries: stable slug and category. */
   slug?: string;
   category?: string;
@@ -153,8 +156,14 @@ export function stagesFor(kind: Kind, source: Source, hasImage: boolean): Stage[
 /** Prompt sent to text-to-3D. */
 export function buildPrompt(job: Pick<Job, "kind" | "input">): string {
   const t = (job.input.text ?? "").trim();
-  if (job.kind === "pedestrian")
-    return `${t}, one person, full body, standing in an A-pose with arms slightly away from the body, feet flat on the ground, realistic human proportions, life size`;
+  if (job.kind === "pedestrian") {
+    // Lux3D rigging refuses arms that hang by the torso (MODEL_NOT_RIGGABLE), so ask for a strict T-pose;
+    // the second attempt (after a refusal) is blunter still.
+    const retry = (job.input.poseAttempt ?? 0) > 0;
+    return retry
+      ? `${t}, T-pose character model: standing straight, both arms raised straight out sideways, horizontal at shoulder height, far from the body, hands open, legs apart, full body, realistic proportions`
+      : `${t}, one person, full body, standing in a T-pose with both arms stretched straight out to the sides at shoulder height, legs slightly apart, realistic human proportions, life size`;
+  }
   if (job.kind === "articulated") return `${t}, a single object with clearly separate moving parts, real-world size`;
   return `${t}, a single object, real-world size`;
 }
@@ -408,6 +417,28 @@ function pickGlb(outputs: { content: string; isUrl: boolean }[]): string | undef
   return urls.find((u) => /\.glb(\?|$)/i.test(u)) ?? urls[0];
 }
 
+/** The error code a failed task reports in its outputs ({"error":{"code":…}}), if any. */
+export function taskErrorCode(task: Task): string | undefined {
+  for (const o of task.outputs) {
+    if (o.isUrl) continue;
+    try {
+      const j = JSON.parse(o.content) as { error?: { code?: string }; code?: string };
+      const c = j?.error?.code ?? j?.code;
+      if (c) return String(c).replace(/[^A-Z0-9_]/gi, "").slice(0, 60);
+    } catch {
+      /* not JSON */
+    }
+  }
+  return undefined;
+}
+
+function failureSentence(stage: StageName, code?: string): string {
+  if (code === "MODEL_NOT_RIGGABLE") return "Lux3D could not fit a skeleton to this person (it needs arms held out in a T- or A-pose).";
+  if (stage === "rig" || stage === "retarget") return "Lux3D could not animate this person.";
+  if (stage === "articulate") return "Lux3D could not find the moving parts of this object.";
+  return "Lux3D could not finish this model.";
+}
+
 /** Starts or collects one Lux3D stage. */
 async function luxStage(
   job: Job,
@@ -415,7 +446,7 @@ async function luxStage(
   deps: Deps,
   makeReq: () => CreateRequest,
   onDone: (task: Task) => Promise<void>,
-  onFail?: (msg: string) => Promise<StepResult | null>,
+  onFail?: (msg: string, code?: string) => Promise<StepResult | null>,
 ): Promise<StepResult> {
   const now = deps.now();
   if (st.status === "pending") {
@@ -436,6 +467,7 @@ async function luxStage(
     st.startedAt = now;
     st.note = st.reruns ? "re-run after the result link expired" : undefined;
     st.credits = (st.credits ?? 0) + creditsFor(req);
+    st.lastCredits = creditsFor(req);
     job.work.credits += creditsFor(req);
     job.work.tasks[st.name] = st.taskId;
     job.work.waitUntil = undefined;
@@ -462,8 +494,15 @@ async function luxStage(
     deps.log(`job ${job.id}: ${st.name} done in ${Math.round((st.endedAt - (st.startedAt ?? st.endedAt)) / 1000)} s`);
     return "progress";
   }
-  const msg = task.status === "cancelled" ? "The Lux3D task was cancelled." : "Lux3D could not finish this model.";
-  const alt = onFail ? await onFail(msg) : null;
+  // failed tasks are not charged (measured Nov 9: a failed rig left the balance unchanged)
+  job.work.credits -= st.lastCredits ?? 0;
+  st.credits = (st.credits ?? 0) - (st.lastCredits ?? 0);
+  const code = taskErrorCode(task);
+  job.work.outputs ??= {};
+  job.work.outputs[st.name] = task.outputs.map((o) => o.content.slice(0, 500));
+  const msg = task.status === "cancelled" ? "The Lux3D task was cancelled." : failureSentence(st.name, code);
+  deps.log(`job ${job.id}: ${st.name} failed${code ? ` (${code})` : ""}`);
+  const alt = onFail ? await onFail(msg, code) : null;
   if (alt) return alt;
   throw new AholoError(msg, "server", false);
 }
@@ -597,6 +636,16 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
           job.work.rigKey = `raw/${id}/rig.glb`;
           await s.put(job.work.rigKey, await deps.download(url), { contentType: "model/gltf-binary" });
         },
+        async (_msg, code) => {
+          if (code !== "MODEL_NOT_RIGGABLE" || (job.input.poseAttempt ?? 0) >= 1 || job.input.imageKey) return null;
+          // generate the person again with a blunter T-pose prompt, then rig again
+          job.input.poseAttempt = 1;
+          for (const n of ["generate", "fetch-result", "upload-for-rig", "rig"] as StageName[]) {
+            const x = job.stages.find((y) => y.name === n)!;
+            Object.assign(x, { status: "pending", taskId: undefined, startedAt: undefined, endedAt: undefined, note: n === "generate" ? "second try with a stricter T-pose" : undefined });
+          }
+          return "progress";
+        },
       );
     case "retarget":
       return luxStage(
@@ -631,12 +680,13 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
       const r = await processModel({
         glb: g.body,
         split: job.kind === "object" && !!job.work.splitKey,
+        wholeGlb: job.kind === "object" && job.work.splitKey ? (await s.get(job.work.genKey!))?.body : undefined,
         animated: job.kind !== "object",
         inPlace: job.kind === "pedestrian" ? true : undefined,
       });
       await s.put(`objects/${id}/visual.glb`, r.visual, { contentType: "model/gltf-binary" });
       await s.put(`objects/${id}/parts.json`, r.partsJson, { contentType: "application/json" });
-      job.work.process = { ...r.stats, bboxMinX: r.parts.bbox.min[0], bboxMinY: r.parts.bbox.min[1], bboxMinZ: r.parts.bbox.min[2], bboxMaxX: r.parts.bbox.max[0], bboxMaxY: r.parts.bbox.max[1], bboxMaxZ: r.parts.bbox.max[2] };
+      job.work.process = { ...r.stats, volume: r.parts.volume, bboxMinX: r.parts.bbox.min[0], bboxMinY: r.parts.bbox.min[1], bboxMinZ: r.parts.bbox.min[2], bboxMaxX: r.parts.bbox.max[0], bboxMaxY: r.parts.bbox.max[1], bboxMaxZ: r.parts.bbox.max[2] };
       st.status = "done";
       st.endedAt = deps.now();
       st.note = `${r.stats.parts} part${r.stats.parts === 1 ? "" : "s"}, ${Math.round(r.stats.visualBytes / 1024)} KB`;
@@ -660,6 +710,7 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
         bbox: { min: [p.bboxMinX, p.bboxMinY, p.bboxMinZ], max: [p.bboxMaxX, p.bboxMaxY, p.bboxMaxZ] },
         size: [p.bboxMaxX - p.bboxMinX, p.bboxMaxY - p.bboxMinY, p.bboxMaxZ - p.bboxMinZ].map((v) => Math.round(v * 1000) / 1000) as [number, number, number],
         parts: p.parts,
+        volume: p.volume,
         split: job.work.splitKey ? "parts" : (job.stages.find((x) => x.name === "part-split")?.note ?? "whole"),
         tris: p.tris,
         bytes: { visual: p.visualBytes, parts: p.partsBytes },

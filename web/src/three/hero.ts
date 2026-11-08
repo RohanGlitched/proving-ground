@@ -2,7 +2,7 @@
 // walking controller tries to get to the flag. Real physics, real controller, on a loop.
 import * as THREE from "three";
 import { showcase } from "@/lib/samples";
-import { getLibrary, getParts, objectUrl, type LibraryEntry } from "@/lib/client/api";
+import { getLibrary, getPhysics, objectUrl, type LibraryEntry } from "@/lib/client/api";
 import type { ArenaView } from "./arenaView";
 
 export type HeroStatus = {
@@ -114,10 +114,10 @@ export function startHero(canvas: HTMLCanvasElement, onStatus: (s: HeroStatus) =
       lastTouch = null;
       const placements = chosen.map((c, i) => ({ uid: `h${round}-${i}`, objectId: c.e.id, name: c.e.name, x: c.x, y: c.y, yaw: c.yaw }));
       placements.forEach((p) => names.set(p.uid, p.name));
-      const parts = await Promise.all(placements.map((p) => getParts(p.objectId)));
+      const phys = await Promise.all(placements.map((p) => getPhysics(p.objectId)));
       if (disposed) break;
       await sim.pause();
-      await sim.setScene({ objects: placements.map((p, i) => ({ id: p.uid, name: p.name, parts: parts[i], x: p.x, y: p.y, yaw: p.yaw })), goal: GOAL, start: { x: 0, y: 0, yaw: 0 } });
+      await sim.setScene({ objects: placements.map((p, i) => ({ id: p.uid, name: p.name, parts: phys[i].parts, x: p.x, y: p.y, yaw: p.yaw, mass: phys[i].volume ? phys[i].volume! * 400 : undefined })), goal: GOAL, start: { x: 0, y: 0, yaw: 0 } });
       await sim.reset();
       view.setOrder(placements.map((p) => p.uid));
       onStatus({ phase: "making", object: placements.map((p) => p.name).join(", "), round });

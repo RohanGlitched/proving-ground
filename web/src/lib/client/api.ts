@@ -78,7 +78,24 @@ export async function getStatus() {
 
 /** Parts arrive Y-up (Lux3D). The sim wants Z-up: (x, y, z)_yup -> (x, -z, y)_zup. */
 export async function getParts(id: string): Promise<CollisionPart[]> {
-  const doc = await json<PartsDoc>(await fetch(objectUrl(id, "parts.json")));
+  return (await getPhysics(id)).parts;
+}
+
+const physicsCache = new Map<string, Promise<{ parts: CollisionPart[]; volume: number | null }>>();
+/** Collision parts plus the closed-mesh volume (m³) when the pipeline measured it. Mass = volume × density. */
+export function getPhysics(id: string) {
+  let p = physicsCache.get(id);
+  if (!p) {
+    p = fetch(objectUrl(id, "parts.json"))
+      .then((r) => json<PartsDoc & { volume?: number }>(r))
+      .then((doc) => ({ parts: convertParts(doc), volume: typeof doc.volume === "number" && doc.volume > 0 ? doc.volume : null }));
+    p.catch(() => physicsCache.delete(id));
+    physicsCache.set(id, p);
+  }
+  return p;
+}
+
+function convertParts(doc: PartsDoc): CollisionPart[] {
   return doc.parts.map((p) => {
     const src = p.points;
     const out = new Float32Array(src.length);

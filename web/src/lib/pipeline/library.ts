@@ -19,6 +19,8 @@ export type ObjectMeta = {
   /** Extent along x, y (height), z in metres. */
   size: [number, number, number];
   parts: number;
+  /** m³ (parts.json explains the method); mass = volume × density. */
+  volume?: number;
   /** "parts" when part-split succeeded, else why the object is one part. */
   split: string;
   tris: number;
@@ -30,13 +32,13 @@ export type ObjectMeta = {
   animated?: { clip: string; inPlace?: boolean };
 };
 
-export type LibraryEntry = Pick<ObjectMeta, "id" | "slug" | "name" | "kind" | "source" | "category" | "size" | "parts" | "createdAt" | "hasInput" | "style">;
+export type LibraryEntry = Pick<ObjectMeta, "id" | "slug" | "name" | "kind" | "source" | "category" | "size" | "parts" | "volume" | "createdAt" | "hasInput" | "style">;
 export type LibraryDoc = { items: LibraryEntry[]; updatedAt: number };
 
 export const LIBRARY_KEY = "library.json";
 
 export function toEntry(m: ObjectMeta): LibraryEntry {
-  return { id: m.id, slug: m.slug, name: m.name, kind: m.kind, source: m.source, category: m.category, size: m.size, parts: m.parts, createdAt: m.createdAt, hasInput: m.hasInput, style: m.style };
+  return { id: m.id, slug: m.slug, name: m.name, kind: m.kind, source: m.source, category: m.category, size: m.size, parts: m.parts, volume: m.volume, createdAt: m.createdAt, hasInput: m.hasInput, style: m.style };
 }
 
 /** Adds (or replaces, by id) an entry in library.json with generation-match. */

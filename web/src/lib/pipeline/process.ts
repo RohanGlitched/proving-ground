@@ -3,6 +3,8 @@ import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import { clearNodeParent, clearNodeTransform, dedup, getBounds, meshopt, prune, simplify, textureCompress, weld } from "@gltf-transform/functions";
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
 import sharp from "sharp";
+import { Vector3 } from "three";
+import { ConvexHull } from "three/examples/jsm/math/ConvexHull.js";
 
 /**
  * Turns Lux3D GLBs into what the app loads:
@@ -25,7 +27,12 @@ import sharp from "sharp";
 export const LIMITS = { maxTris: 25_000, maxPartPoints: 400, targetBytes: 1_500_000, maxTexture: 1024 };
 
 export type BBox = { min: [number, number, number]; max: [number, number, number] };
-export type Part = { name: string; count: number; points: number[]; bbox: BBox; centroid: [number, number, number] };
+export type VolumeMethod = "mesh" | "mesh-share" | "hull";
+/**
+ * volume (m³): "mesh" = enclosed by the part's own closed surface; "mesh-share" = the closed whole-object
+ * mesh's volume shared out by hull volume (part-split leaves the cut faces open); "hull" = 0.6 × hull.
+ */
+export type Part = { name: string; count: number; points: number[]; bbox: BBox; centroid: [number, number, number]; volume: number; volumeMethod: VolumeMethod; hullVolume: number };
 export type PartsDoc = {
   version: 1;
   up: "y";
@@ -33,6 +40,8 @@ export type PartsDoc = {
   frame: string;
   source: "part-split" | "whole";
   bbox: BBox;
+  /** Sum of the part volumes (m³); mass = volume × density. */
+  volume: number;
   parts: Part[];
   animated?: { clips: { name: string; duration: number }[]; inPlace?: boolean };
 };
@@ -197,7 +206,99 @@ export function decimateForHull(points: number[], max = LIMITS.maxPartPoints): n
   return out;
 }
 
-function partFrom(name: string, raw: Float64Array): Part {
+/** Convex hull volume (m³) of a flat xyz list. */
+export function hullVolume(points: number[]): number {
+  if (points.length < 12) return 0;
+  const vs: Vector3[] = [];
+  for (let i = 0; i < points.length; i += 3) vs.push(new Vector3(points[i], points[i + 1], points[i + 2]));
+  try {
+    const h = new ConvexHull().setFromPoints(vs);
+    let v = 0;
+    for (const f of h.faces) {
+      const loop: Vector3[] = [];
+      let e = f.edge;
+      do {
+        loop.push(e.head().point);
+        e = e.next;
+      } while (e !== f.edge);
+      for (let i = 1; i + 1 < loop.length; i++) v += loop[0].dot(new Vector3().crossVectors(loop[i], loop[i + 1])) / 6;
+    }
+    return Math.abs(v);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Volume (m³) enclosed by a node's triangles via signed tetrahedra, and whether the surface is closed:
+ * vertices are welded by position (UV seams split them), then at most 0.5% of edges may be open.
+ */
+export function meshVolume(node: GNode): { volume: number; closed: boolean } {
+  const m = node.getWorldMatrix() as unknown as number[];
+  const ids = new Map<string, number>();
+  const P: number[] = [];
+  const edges = new Map<string, number>();
+  let vol = 0;
+  let tris = 0;
+  const el = [0, 0, 0];
+  for (const prim of node.getMesh()!.listPrimitives()) {
+    if (prim.getMode() !== 4) continue;
+    const pos = prim.getAttribute("POSITION");
+    if (!pos) continue;
+    const remap = new Int32Array(pos.getCount());
+    for (let i = 0; i < pos.getCount(); i++) {
+      pos.getElement(i, el);
+      const [x, y, z] = el;
+      const wx = m[0] * x + m[4] * y + m[8] * z + m[12],
+        wy = m[1] * x + m[5] * y + m[9] * z + m[13],
+        wz = m[2] * x + m[6] * y + m[10] * z + m[14];
+      const k = `${Math.round(wx * 1e5)},${Math.round(wy * 1e5)},${Math.round(wz * 1e5)}`;
+      let id = ids.get(k);
+      if (id === undefined) {
+        id = P.length / 3;
+        ids.set(k, id);
+        P.push(wx, wy, wz);
+      }
+      remap[i] = id;
+    }
+    const idx = prim.getIndices();
+    const n = idx ? idx.getCount() : pos.getCount();
+    for (let t = 0; t + 2 < n; t += 3) {
+      const a = remap[idx ? idx.getScalar(t) : t],
+        b = remap[idx ? idx.getScalar(t + 1) : t + 1],
+        c = remap[idx ? idx.getScalar(t + 2) : t + 2];
+      if (a === b || b === c || a === c) continue;
+      tris++;
+      const ax = P[3 * a], ay = P[3 * a + 1], az = P[3 * a + 2];
+      const bx = P[3 * b], by = P[3 * b + 1], bz = P[3 * b + 2];
+      const cx = P[3 * c], cy = P[3 * c + 1], cz = P[3 * c + 2];
+      vol += (ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)) / 6;
+      for (const [u, v] of [[a, b], [b, c], [c, a]]) {
+        const k = u < v ? `${u}_${v}` : `${v}_${u}`;
+        edges.set(k, (edges.get(k) ?? 0) + 1);
+      }
+    }
+  }
+  let open = 0;
+  for (const c of edges.values()) if (c !== 2) open++;
+  const closed = tris > 0 && open <= edges.size * 0.005;
+  return { volume: Math.abs(vol), closed };
+}
+
+function withVolume(part: Omit<Part, "volume" | "volumeMethod" | "hullVolume">, mesh: { volume: number; closed: boolean }): Part {
+  const hv = hullVolume(part.points);
+  // a closed mesh can't exceed its own hull; if it seems to, the surface is inverted or self-overlapping
+  const meshOk = mesh.closed && mesh.volume > 0 && mesh.volume <= hv * 1.05;
+  const volume = meshOk ? mesh.volume : 0.6 * hv;
+  return { ...part, volume: +volume.toPrecision(5), volumeMethod: meshOk ? "mesh" : "hull", hullVolume: +hv.toPrecision(5) };
+}
+
+function sumMesh(nodes: GNode[]): { volume: number; closed: boolean } {
+  const vs = nodes.map(meshVolume);
+  return { volume: vs.reduce((s, v) => s + v.volume, 0), closed: vs.every((v) => v.closed) };
+}
+
+function partFrom(name: string, raw: Float64Array): Omit<Part, "volume" | "volumeMethod" | "hullVolume"> {
   const uniq = uniquePoints(raw);
   const pts = decimateForHull(uniq);
   const c: [number, number, number] = [0, 0, 0];
@@ -226,6 +327,8 @@ export type ProcessInput = {
   /** Animated models keep their hierarchy and skip quantization. */
   animated?: boolean;
   inPlace?: boolean;
+  /** The unsplit generation GLB; its closed volume is shared out across split parts. */
+  wholeGlb?: Buffer;
 };
 
 export async function processModel(input: ProcessInput): Promise<ProcessResult> {
@@ -265,7 +368,13 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
       n.getMesh()!.setName(`part-${i}`);
     });
     if (input.split && nodes.length > 1) {
-      partList = nodes.map((n, i) => partFrom(`part-${i}`, nodePositions(n)));
+      partList = nodes.map((n, i) => withVolume(partFrom(`part-${i}`, nodePositions(n)), meshVolume(n)));
+      if (input.wholeGlb && partList.some((p) => p.volumeMethod === "hull")) {
+        const whole = sumMesh(meshNodes(await io.readBinary(new Uint8Array(input.wholeGlb))));
+        const hullSum = partList.reduce((t, p) => t + p.hullVolume, 0);
+        if (whole.closed && whole.volume > 0 && hullSum > 0)
+          partList = partList.map((p) => ({ ...p, volume: +((whole.volume * p.hullVolume) / hullSum).toPrecision(5), volumeMethod: "mesh-share" as const }));
+      }
       source = "part-split";
     } else {
       // single part: one node holds the whole object
@@ -276,7 +385,7 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
         merged.set(a, o);
         o += a.length;
       }
-      partList = [partFrom("part-0", merged)];
+      partList = [withVolume(partFrom("part-0", merged), sumMesh(nodes))];
       source = "whole";
       if (nodes.length > 1) {
         // keep the visual consistent with one physics part: group meshes under one node "part-0"
@@ -296,7 +405,7 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
       merged.set(a, o);
       o += a.length;
     }
-    partList = [partFrom("part-0", merged)];
+    partList = [withVolume(partFrom("part-0", merged), sumMesh(nodes))];
     source = "whole";
     nodes.forEach((n, i) => n.setName(nodes.length === 1 ? "part-0" : `part-0-mesh-${i}`));
   }
@@ -342,6 +451,7 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
     frame: "object frame: Y-up, metres, origin at the Lux3D bounding-box centre (same frame as visual.glb)",
     source,
     bbox,
+    volume: +partList.reduce((s, p) => s + p.volume, 0).toPrecision(5),
     parts: partList,
   };
   if (animated) {
