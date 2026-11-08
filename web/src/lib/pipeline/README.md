@@ -27,7 +27,7 @@ articulated      generate ─► fetch-result ─► upload-for-articulation ─
 | key | what |
 | --- | --- |
 | `objects/{id}/visual.glb` | one mesh node per part, named `part-0…part-N-1` in parts.json order; ≤ 25k triangles; WebP textures ≤ 1024 px; meshopt + KHR_mesh_quantization for static objects. Load it with `GLTFLoader.setMeshoptDecoder(MeshoptDecoder)`. Every part node has the same node transform (the quantization scale), so explode parts by adding to `position`, not by resetting it. Animated models (pedestrians, articulated) keep their skeleton and animations and are not quantized. |
-| `objects/{id}/parts.json` | `{version, up:"y", unit:"m", source:"part-split"\|"whole", bbox, parts:[{name, count, points:[x,y,z,…], bbox, centroid}]}`; at most 400 extreme points per part (the sim hulls them). Pedestrians and articulated objects carry `animated.clips`. |
+| `objects/{id}/parts.json` | `{version, up:"y", unit:"m", source:"part-split"\|"whole", bbox, volume, parts:[{name, count, points:[x,y,z,…], bbox, centroid, volume, volumeMethod, hullVolume}]}`; at most 400 extreme points per part (the sim hulls them). Pedestrians and articulated objects carry `animated.clips`; a pedestrian's single part is its rest-pose body without the outstretched arms (points within 0.12 × height of the body's centre line), a capsule-like proxy. |
 | `objects/{id}/meta.json` | `ObjectMeta` (library.ts): name, kind, source, prompt, style, bbox, size [x, y, z] m, parts, split, tris, bytes, credits, Lux3D task ids, `up:"y"`, `unit:"m"`. |
 | `inputs/{id}.jpg` | the cleaned input photo (EXIF stripped, ≤ 1024 px), served only once the object is published. |
 | `jobs/{id}.json`, `queue.json`, `library.json`, `limits/*`, `courses/*` | state, all updated with generation-match. |
@@ -35,6 +35,15 @@ articulated      generate ─► fetch-result ─► upload-for-articulation ─
 Both files use the Lux3D frame unchanged: **Y-up, metres, origin at the bounding-box centre** (so the object
 spans y = −h/2…h/2; the sim lifts it to the floor). `lux3d_metadata.bbox` in the raw GLB lists the extents in
 Z-up order, so bbox and size here are measured from the geometry.
+
+## Volume (for mass)
+
+`volume` (m³) per part and in total; mass = volume × density. `volumeMethod`:
+- `mesh`: the part's own surface is closed (≤ 0.5% open edges after welding by position), measured with signed
+  tetrahedra. Lux3D's whole meshes are closed: chair 12.9 L, sneaker 1.4 L, cone 6.6 L.
+- `mesh-share`: part-split leaves cut faces open, so the closed whole-object volume is shared out across the
+  parts in proportion to their hull volumes (chair: 8 parts summing to 12.9 L, where hulls give 49.8 L).
+- `hull`: 0.6 × convex hull volume when no closed surface exists.
 
 ## Queue
 
@@ -46,6 +55,12 @@ so racing advancers never start a stage twice (tests/pipeline/queue.test.mjs run
 `GENERATION_CONCURRENCY_LIMIT_EXCEEDED` answer (for example while the library script runs) leaves the stage
 pending and retries every 15 s, for up to 20 minutes. An active job that has not moved for 30 minutes is
 dropped from the queue.
+
+## Turbo or G1
+
+Compared on Nov 9 (text-to-3D, same prompts): a traffic cone took 84 s on Turbo and 285 s on G1, and the two looked
+alike in the library view; G1 returned fewer triangles (7.6k vs 18k) and no `lux3d_metadata`. Turbo is the
+default (13 vs 20 credits, 3.4× faster); `LUX_VERSION=G1` switches.
 
 ## Cost per job (credits, live quote Nov 9 2026)
 
