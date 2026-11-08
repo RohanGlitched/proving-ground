@@ -12,7 +12,26 @@ import { getLibrary, getPhysics, loadCourse, objectUrl, postResult, saveCourse, 
 import type { ContactEvent, SceneSpec, TrialSummary } from "@/sim/types";
 
 type Mode = "blind" | "planner" | "manual";
-type Placed = Placement & { density?: number };
+type Placed = Placement & { density?: number; kind?: "object" | "mover" };
+
+// a walker crosses the course at x, from one side to the other and back, about 0.9 m/s
+const WALK_SPAN = 2.4;
+const FACE = Math.PI; // Lux3D people face glTF +Z, which is -Y after the Y-up -> Z-up turn
+function crossingPath(x: number, phase = 0) {
+  const leg = (2 * WALK_SPAN) / 0.9;
+  const keys = [
+    { x, y: -WALK_SPAN, yaw: FACE, t: 0 },
+    { x, y: WALK_SPAN, yaw: FACE, t: leg },
+    { x, y: WALK_SPAN, yaw: 0, t: leg + 0.6 },
+    { x, y: -WALK_SPAN, yaw: 0, t: 2 * leg + 0.6 },
+    { x, y: -WALK_SPAN, yaw: FACE, t: 2 * leg + 1.2 },
+  ];
+  if (!phase) return keys;
+  // start part-way along the loop
+  const T = keys[keys.length - 1].t;
+  const shift = (phase % 1) * T;
+  return keys.map((k) => ({ ...k, t: (k.t + shift) % T })).sort((a, b) => a.t - b.t);
+}
 type LogLine = { t: number; text: string; tone: "fault" | "pass" | "ink" };
 
 const DEFAULT_GOAL = { x: 4.5, y: 0 };
@@ -173,18 +192,23 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       const view = viewRef.current;
       if (!sim || !view) return;
       const v = ++sceneVersion.current;
+      const things = placed.filter((p) => p.kind !== "mover");
+      const walkers = placed.filter((p) => p.kind === "mover");
       const objs = await Promise.all(
-        placed.map(async (p) => {
+        things.map(async (p) => {
           const ph = await physics(p.objectId);
           const density = p.density ?? 400;
           // mass from the closed mesh volume when known (hull volume overstates hollow shapes)
           return { id: p.uid, name: p.name, parts: ph.parts, x: p.x, y: p.y, yaw: p.yaw, density, mass: ph.volume ? ph.volume * density : undefined };
         }),
       );
+      const movers = await Promise.all(
+        walkers.map(async (p, i) => ({ id: p.uid, name: p.name, parts: (await physics(p.objectId)).parts, path: crossingPath(p.x, i * 0.37), loop: true })),
+      );
       if (v !== sceneVersion.current) return;
-      const scene: SceneSpec = { objects: objs, start, goal };
+      const scene: SceneSpec = { objects: objs, movers, start, goal };
       await sim.setScene(scene);
-      view.setOrder(placed.map((p) => p.uid));
+      view.setOrder(things.map((p) => p.uid), walkers.map((p) => p.uid));
       sim.setMode(mode);
       if (mode === "planner") view.setPath(await sim.path());
       else view.setPath(null);
@@ -200,11 +224,15 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     const view = viewRef.current;
     if (!view || boot !== "ready") return;
     const keep = new Set(placed.map((p) => p.uid));
-    for (const p of placed) view.upsertObject(p, objectUrl(p.objectId, "visual.glb"));
+    for (const p of placed) {
+      if (p.kind === "mover") view.upsertMover(p.uid, objectUrl(p.objectId, "visual.glb"));
+      else view.upsertObject(p, objectUrl(p.objectId, "visual.glb"));
+    }
     // remove stale
     (view as unknown as { objects: Map<string, unknown> }).objects.forEach((_v, uid) => {
       if (!keep.has(uid)) view.removeObject(uid);
     });
+    for (const uid of view.moverIds()) if (!keep.has(uid)) view.removeMover(uid);
     rebuild();
   }, [placed, boot, rebuild]);
 
@@ -241,6 +269,13 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   // ---- actions ----
   function addEntry(e: LibraryEntry) {
     const n = placed.length;
+    if (e.kind === "pedestrian") {
+      const walkers = placed.filter((p) => p.kind === "mover").length;
+      const p: Placed = { uid: newUid(), objectId: e.id, name: e.name, kind: "mover", x: 1.2 + ((walkers * 1.1) % 2.6), y: 0, yaw: 0 };
+      setPlaced((ps) => [...ps, p]);
+      say(`${e.name} starts walking across the course`);
+      return;
+    }
     const p: Placed = { uid: newUid(), objectId: e.id, name: e.name, x: Math.min(goal.x - 0.8, 1.4 + (n % 4) * 0.8), y: ((n % 3) - 1) * 0.45, yaw: (n * 0.7) % Math.PI };
     setPlaced((ps) => [...ps, p]);
     setSelected(p.uid);

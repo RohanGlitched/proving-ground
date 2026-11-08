@@ -35,6 +35,20 @@ export function LibraryDrawer({ items, loading, onAdd }: { items: LibraryEntry[]
           </button>
         ))}
       </div>
+      {items.some((i) => i.kind === "pedestrian") && (
+        <div className="mt-2 rounded-[3px] bg-ink/[0.04] p-2">
+          <div className="text-[12px] font-semibold text-ink-3">People who walk through (Lux3D rig + walk cycle)</div>
+          <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5">
+            {items
+              .filter((i) => i.kind === "pedestrian")
+              .map((e) => (
+                <button key={e.id} onClick={() => onAdd(e)} className="shrink-0 rounded-[8px] border border-ink/15 bg-paper px-2.5 py-1.5 text-[12.5px] font-semibold hover:border-ink/40" title={`Add ${e.name} walking across the course`}>
+                  + {e.name}
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
       <div className="mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
         {loading && <div className="grid grid-cols-2 gap-2">{Array.from({ length: 6 }, (_, i) => <div key={i} className="sheet aspect-square animate-pulse" />)}</div>}
         {!loading && shown.length === 0 && (

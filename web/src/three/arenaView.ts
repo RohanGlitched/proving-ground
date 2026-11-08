@@ -7,6 +7,7 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { Stage } from "./stage";
 import { RobotView, mjPos, mjQuat, type RobotVisual } from "./robot";
 import { Materializer } from "./materializer";
+import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 
 export type Placement = { uid: string; objectId: string; name: string; x: number; y: number; yaw: number };
 
@@ -17,6 +18,25 @@ const PASS = new THREE.Color("#1e9e5a");
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const glbCache = new Map<string, Promise<THREE.Object3D>>();
+const animCache = new Map<string, Promise<{ scene: THREE.Object3D; animations: THREE.AnimationClip[] }>>();
+/** A GLB with its animation clips (walking people). */
+export function loadAnimated(url: string) {
+  let p = animCache.get(url);
+  if (!p) {
+    p = loader.loadAsync(url).then((g) => {
+      g.scene.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) {
+          m.castShadow = true;
+          m.frustumCulled = false;
+        }
+      });
+      return { scene: g.scene, animations: g.animations };
+    });
+    animCache.set(url, p);
+  }
+  return p;
+}
 export function loadVisual(url: string) {
   let p = glbCache.get(url);
   if (!p) {
@@ -108,6 +128,8 @@ export class ArenaView {
   robot: RobotView | null = null;
   private objects = new Map<string, ObjEntry>();
   private order: string[] = []; // object uids in sim scene order
+  private moverOrder: string[] = [];
+  private movers = new Map<string, { root: THREE.Group; mixer: THREE.AnimationMixer | null; lift: number }>();
   private goal = goalFlag();
   private start = startPad();
   private pathLine: THREE.Line | null = null;
@@ -210,8 +232,41 @@ export class ArenaView {
   }
 
   /** scene order the sim uses for object poses */
-  setOrder(uids: string[]) {
+  setOrder(uids: string[], movers: string[] = []) {
     this.order = uids;
+    this.moverOrder = movers;
+  }
+
+  /** A walking person (Lux3D rig + retargeted Walk_Loop) driven along a path by the sim. */
+  async upsertMover(uid: string, url: string) {
+    if (this.movers.has(uid)) return;
+    const root = new THREE.Group();
+    root.userData.uid = uid;
+    const entry = { root, mixer: null as THREE.AnimationMixer | null, lift: 0 };
+    this.movers.set(uid, entry);
+    this.stage.scene.add(root);
+    const g = await loadAnimated(url);
+    if (!this.movers.has(uid)) return;
+    const body = cloneSkinned(g.scene);
+    const box = new THREE.Box3().setFromObject(body);
+    entry.lift = -box.min.y;
+    root.add(body);
+    if (g.animations.length) {
+      entry.mixer = new THREE.AnimationMixer(body);
+      const clip = g.animations.find((c) => /walk/i.test(c.name)) ?? g.animations[0];
+      entry.mixer.clipAction(clip).play();
+    }
+  }
+
+  removeMover(uid: string) {
+    const m = this.movers.get(uid);
+    if (!m) return;
+    this.stage.scene.remove(m.root);
+    this.movers.delete(uid);
+  }
+
+  moverIds() {
+    return [...this.movers.keys()];
   }
 
   private placeFromPlacement(e: ObjEntry) {
@@ -247,6 +302,15 @@ export class ArenaView {
       mjQuat(q, buf[o + 3], buf[o + 4], buf[o + 5], buf[o + 6]);
       // parts were rotated Y-up -> Z-up for the body; undo that for the Y-up GLB
       e.root.quaternion.copy(q).multiply(YUP_TO_ZUP);
+    }
+    const mbase = base + this.order.length * 7;
+    for (let i = 0; i < this.moverOrder.length; i++) {
+      const m = this.movers.get(this.moverOrder[i]);
+      if (!m) continue;
+      const o = mbase + i * 7;
+      mjPos(m.root.position, buf[o], buf[o + 1], buf[o + 2]);
+      mjQuat(q, buf[o + 3], buf[o + 4], buf[o + 5], buf[o + 6]);
+      m.root.quaternion.copy(q).multiply(YUP_TO_ZUP);
     }
 
   }
@@ -311,6 +375,7 @@ export class ArenaView {
   }
 
   private tick(dt: number) {
+    for (const m of this.movers.values()) m.mixer?.update(dt);
     for (const e of this.objects.values()) {
       if (e.mat && !e.mat.done) e.mat.update(dt);
       if (e.flash > 0) {
