@@ -44,6 +44,8 @@ export const TYPICAL_SECONDS: Record<string, number> = {
   "upload-for-articulation": 6,
   articulate: 120,
   process: 4,
+  "upload-for-export": 6,
+  export: 60,
   publish: 1,
 };
 

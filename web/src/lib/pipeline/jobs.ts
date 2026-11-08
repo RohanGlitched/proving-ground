@@ -22,7 +22,7 @@ import { appendToLibrary, type ObjectMeta } from "./library";
  * - A GENERATION_CONCURRENCY_LIMIT_EXCEEDED answer leaves the stage pending and retries after 15 s.
  */
 
-export type Kind = "object" | "pedestrian" | "articulated";
+export type Kind = "object" | "pedestrian" | "articulated" | "export";
 export type Source = "text" | "photo" | "library";
 export type StageName =
   | "upload-input"
@@ -36,6 +36,8 @@ export type StageName =
   | "retarget"
   | "upload-for-articulation"
   | "articulate"
+  | "upload-for-export"
+  | "export"
   | "process"
   | "publish";
 export type StageStatus = "pending" | "running" | "done" | "skipped" | "failed";
@@ -66,6 +68,10 @@ export type JobInput = {
   split?: boolean;
   /** Pedestrians: 1 after the rigger refused the first pose. */
   poseAttempt?: number;
+  /** Export jobs: which published object, which format, and the stored model to convert. */
+  objectId?: string;
+  format?: ExportFormat;
+  sourceKey?: string;
   /** Library entries: stable slug and category. */
   slug?: string;
   category?: string;
@@ -148,6 +154,8 @@ export function stagesFor(kind: Kind, source: Source, hasImage: boolean): Stage[
   const names: StageName[] =
     kind === "object"
       ? ["upload-input", "generate", "fetch-result", "upload-for-split", "part-split", "process", "publish"]
+      : kind === "export"
+        ? ["upload-for-export", "export"]
       : kind === "pedestrian"
         ? ["upload-input", "generate", "fetch-result", "upload-for-rig", "rig", "upload-for-retarget", "retarget", "process", "publish"]
         : ["upload-input", "generate", "fetch-result", "upload-for-articulation", "articulate", "process", "publish"];
@@ -680,6 +688,21 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
           await s.put(job.work.finalKey, await deps.download(url), { contentType: "model/gltf-binary" });
         },
       );
+    case "upload-for-export":
+      return uploadStage(job, st, deps, job.input.sourceKey!, (u) => (job.work.genUrl = u));
+    case "export":
+      return luxStage(
+        job,
+        st,
+        deps,
+        () => ({ op: "export", modelUrl: job.work.genUrl!, outputFormat: [job.input.format!] }),
+        async (task) => {
+          const url = pickExport(task.outputs, job.input.format!);
+          if (!url) throw new AholoError("The export finished without a file.", "server", false);
+          await s.put(exportKey(job.input.objectId!, job.input.format!), await deps.download(url), { contentType: EXPORT_FORMATS[job.input.format!].type });
+          job.result = { objectId: job.input.objectId! };
+        },
+      );
     case "process": {
       const key = job.kind === "object" ? (job.work.splitKey ?? job.work.genKey!) : job.work.finalKey!;
       const g = await s.get(key);
@@ -708,7 +731,7 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
         id,
         slug: job.input.slug,
         name: displayName(job),
-        kind: job.kind,
+        kind: job.kind as ObjectMeta["kind"],
         source: job.source,
         category: job.input.category,
         prompt: job.input.text,
@@ -740,6 +763,57 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
       return "terminal";
     }
   }
+}
+
+/* ───────────────────────── exports ───────────────────────── */
+
+export const EXPORT_FORMATS = {
+  stl: { ext: "stl", type: "model/stl" },
+  "3mf": { ext: "3mf", type: "model/3mf" },
+  usdz: { ext: "usdz", type: "model/vnd.usdz+zip" },
+  fbx_zip: { ext: "fbx.zip", type: "application/zip" },
+  obj_zip: { ext: "obj.zip", type: "application/zip" },
+} as const;
+export type ExportFormat = keyof typeof EXPORT_FORMATS;
+export const isExportFormat = (f: unknown): f is ExportFormat => typeof f === "string" && Object.hasOwn(EXPORT_FORMATS, f);
+export const exportKey = (id: string, f: ExportFormat) => `objects/${id}/export/${f}`;
+
+/** The output URL for a format: one whose path mentions the format's extension, else the first URL. */
+function pickExport(outputs: { content: string; isUrl: boolean }[], f: ExportFormat): string | undefined {
+  const urls = outputs.filter((o) => o.isUrl).map((o) => o.content);
+  for (const o of outputs) if (!o.isUrl) for (const m of o.content.matchAll(/https?:\/\/[^"'\s\\]+/g)) urls.push(m[0]);
+  const want = f === "fbx_zip" || f === "obj_zip" ? [f.split("_")[0], "zip"] : [f];
+  return urls.find((u) => want.some((w) => u.split("?")[0].toLowerCase().includes(`.${w}`))) ?? urls[0];
+}
+
+/**
+ * The stored model an export is made from: the raw Lux3D result (the walking GLB for pedestrians, the
+ * whole mesh for objects), never the compressed visual.glb.
+ */
+export async function exportSource(objectId: string, s: Store): Promise<string | null> {
+  const job = (await getJob(objectId, s))?.job;
+  const keys = [job?.work.finalKey, job?.work.genKey, `raw/${objectId}/gen.glb`].filter(Boolean) as string[];
+  for (const k of keys) {
+    const g = await s.list(k, 1);
+    if (g.includes(k)) return k;
+  }
+  return null;
+}
+
+/** Starts (or finds) the export job for an object+format. Returns the job id. */
+export async function startExport(objectId: string, format: ExportFormat, deps: Pick<Deps, "store" | "now">): Promise<{ jobId: string; existing: boolean }> {
+  const s = deps.store;
+  const pointer = `${exportKey(objectId, format)}.job.json`;
+  const prev = await s.getJSON<{ jobId: string }>(pointer);
+  if (prev) {
+    const j = (await getJob(prev.value.jobId, s))?.job;
+    if (j && j.status !== "failed") return { jobId: j.id, existing: true };
+  }
+  const sourceKey = await exportSource(objectId, s);
+  if (!sourceKey) throw new AholoError("This object has no source model to export.", "input", false);
+  const job = await createJob({ kind: "export", source: "library", input: { objectId, format, sourceKey } }, deps);
+  await s.putJSON(pointer, { jobId: job.id }, { ifGenerationMatch: prev ? prev.generation : "0" }).catch(() => undefined);
+  return { jobId: job.id, existing: false };
 }
 
 export function displayName(job: Pick<Job, "input" | "source">): string {

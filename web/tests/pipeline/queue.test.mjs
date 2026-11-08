@@ -232,3 +232,24 @@ test("pedestrian: a second refusal fails the job with a plain sentence", { skip:
     cleanup();
   }
 });
+
+test("export: one job per object+format, stored under objects/{id}/export/{format}", async () => {
+  const { store, cleanup } = tempStore();
+  const clock = fakeClock();
+  const f = fakeLux();
+  const { startExport, exportKey } = await import("../../src/lib/pipeline/jobs.ts");
+  try {
+    await store.put("raw/abc123defg/gen.glb", Buffer.from("glb"), { contentType: "model/gltf-binary" });
+    const a = await startExport("abc123defg", "stl", { store, now: clock.now });
+    const b = await startExport("abc123defg", "stl", { store, now: clock.now });
+    assert.equal(a.jobId, b.jobId, "a second request reuses the job");
+    const done = await runToCompletion(a.jobId, { store, lux: f.lux, download: async () => Buffer.from("solid x"), now: clock.now, concurrencyWaitMs: 0 }, 0);
+    assert.equal(done.status, "done", done.error);
+    assert.deepEqual(f.calls.create, ["export"]);
+    assert.equal(f.tasks.get([...f.tasks.keys()][0]).req.outputFormat[0], "stl");
+    assert.equal((await store.get(exportKey("abc123defg", "stl"))).body.toString(), "solid x");
+    assert.equal(done.work.credits, 1);
+  } finally {
+    cleanup();
+  }
+});
