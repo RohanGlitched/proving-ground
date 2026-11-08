@@ -16,12 +16,12 @@ import type {
 
 export * from './types';
 
-/** Header floats at the start of every frame buffer (indices below). */
-export const HEADER = 20;
-export const H_TIME = 0, H_STATUS = 1, H_FALLEN = 2, H_GOAL_REACHED = 3, H_PELVIS_X = 4, H_PELVIS_Y = 5, H_PELVIS_Z = 6,
-  H_ROBOT_YAW = 7, H_VX = 8, H_VY = 9, H_YAW = 10, H_GOAL_X = 11, H_GOAL_Y = 12, H_SEQ = 13, H_CONTACTS = 14,
-  H_LAST_CONTACT = 15, H_FELL_AT = 16, H_GOAL_AT = 17, H_LAST_CONTACT_T = 18, H_RESERVED = 19;
-export const STATUS_CODE: Record<RobotStatus, number> = { running: 0, fell: 1, goal: 2 };
+import {
+  HEADER, H_CONTACTS, H_FALLEN, H_FELL_AT, H_GOAL_AT, H_GOAL_REACHED, H_GOAL_X, H_GOAL_Y, H_LAST_CONTACT, H_LAST_CONTACT_T,
+  H_PELVIS_X, H_PELVIS_Y, H_PELVIS_Z, H_RESERVED, H_ROBOT_YAW, H_SEQ, H_STATUS, H_TIME, H_VX, H_VY, H_YAW, STATUS_CODE,
+} from './frame';
+
+export * from './frame';
 
 export const FALL_HEIGHT = 0.45; // pelvis z (m)
 export const FALL_GRAVITY = -0.5; // projected gravity z above this = tipped over
@@ -139,7 +139,7 @@ export class Engine {
   contacts: ContactEvent[] = [];
   private touching = new Map<number, { ev: ContactEvent; last: number }>();
   private newContacts: ContactEvent[] = [];
-  private forceBuf: { getView(): Float64Array; delete(): void } | null = null;
+  private forceBuf: { GetView(): Float64Array; delete(): void } | null = null;
 
   // pushes
   private pushes: { t0: number; t1: number; fx: number; fy: number }[] = [];
@@ -519,7 +519,7 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     if (near && d.ncon > 0) {
       const cv = d.contact;
       const n = cv.size();
-      this.forceBuf ??= new mj.DoubleBuffer([0, 0, 0, 0, 0, 0]) as unknown as { getView(): Float64Array; delete(): void };
+      this.forceBuf ??= new mj.DoubleBuffer(6) as unknown as { GetView(): Float64Array; delete(): void };
       for (let i = 0; i < n; i++) {
         const c = cv.get(i);
         if (!c) continue;
@@ -530,7 +530,7 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
         if (o1 === -2 && o2 >= 0) { ent = o2; rg = g1; } else if (o2 === -2 && o1 >= 0) { ent = o1; rg = g2; }
         if (ent < 0) continue;
         mj.mj_contactForce(this.model!, d, i, this.forceBuf);
-        const fn = Math.abs(this.forceBuf.getView()[0]);
+        const fn = Math.abs(this.forceBuf.GetView()[0]);
         let tc = this.touching.get(ent);
         if (!tc) {
           const e = this.entities[ent];
