@@ -3,4 +3,5 @@
 export const createRequire = () => {
   throw new Error("createRequire is not available in the browser");
 };
-export default { createRequire };
+const stub = { createRequire };
+export default stub;

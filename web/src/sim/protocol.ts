@@ -1,4 +1,5 @@
 // Message protocol between the UI thread (client.ts) and the sim worker (worker.ts).
+import type { GlbOptions } from './assets';
 import type { Command, ContactEvent, FrameLayout, NavMode, Pose2, RobotStatus, RobotVisual, SceneSpec, TrialOptions, TrialResult, TrialSummary } from './types';
 
 /** Max poses a frame slot can hold (robot visual geoms + objects + movers). */
@@ -17,7 +18,8 @@ export type Request =
   | { type: 'pause'; id: number }
   | { type: 'push'; id: number; force: number; angle: number; duration?: number }
   | { type: 'getPlan'; id: number }
-  | { type: 'runTrials'; id: number; options: TrialOptions };
+  | { type: 'runTrials'; id: number; options: TrialOptions }
+  | { type: 'parseGlb'; id: number; bytes: ArrayBuffer; options?: GlbOptions };
 
 export interface InitResult {
   loadMs: number;

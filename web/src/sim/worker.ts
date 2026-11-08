@@ -2,6 +2,7 @@
 // Sim Web Worker: owns MuJoCo and the engine. Live role steps in real time (paced to the wall clock)
 // and publishes frames at ~60 Hz; trials role runs trials as fast as it can.
 import loadMujoco from '@mujoco/mujoco';
+import { glbToParts } from './assets';
 import { Engine } from './engine';
 import { DT } from './policy';
 import { MAX_POSES, type InitResult, type Request, type SceneResult, type WorkerEvent } from './protocol';
@@ -101,6 +102,7 @@ function sceneResult(r: { compileMs: number }): SceneResult {
 
 async function handle(m: Request): Promise<unknown> {
   if (m.type === 'init') return init(m);
+  if (m.type === 'parseGlb') return glbToParts(new Uint8Array(m.bytes), m.options);
   if (!engine) throw new Error('sim not initialised');
   const e = engine;
   switch (m.type) {

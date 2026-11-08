@@ -61,8 +61,10 @@ export function documentToParts(doc: Document, opts: GlbOptions = {}): ObjectAss
       const pos = prim.getAttribute('POSITION');
       if (!pos) continue;
       const base = pts.length / 3;
+      const raw = pos.getArray();
+      const fast = raw instanceof Float32Array && !pos.getNormalized() && pos.getElementSize() === 3;
       for (let i = 0, n = pos.getCount(); i < n; i++) {
-        pos.getElement(i, el);
+        if (fast) { el[0] = raw[3 * i]; el[1] = raw[3 * i + 1]; el[2] = raw[3 * i + 2]; } else pos.getElement(i, el);
         const x = m[0] * el[0] + m[4] * el[1] + m[8] * el[2] + m[12];
         const y = m[1] * el[0] + m[5] * el[1] + m[9] * el[2] + m[13];
         const z = m[2] * el[0] + m[6] * el[1] + m[10] * el[2] + m[14];

@@ -79,7 +79,6 @@ export function prepareParts(parts: CollisionPart[]): PreparedPart[] {
 const fmt = (v: number) => String(Math.round(v * 1e5) / 1e5);
 const yawQuat = (yaw: number) => [Math.cos(yaw / 2), 0, 0, Math.sin(yaw / 2)];
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
-const escapeName = (s: string) => s.replace(/[^A-Za-z0-9_.-]/g, '_');
 
 export interface EngineOptions {
   mujoco: MainModule;
@@ -729,4 +728,3 @@ export function samplePath(path: { x: number; y: number; yaw: number; t: number 
 }
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
-void escapeName;

@@ -30,11 +30,13 @@ export function clusterPoints(points: Float32Array, cell: number): Float32Array 
   let cx = 0, cy = 0, cz = 0;
   for (let i = 0; i < points.length; i += 3) { cx += points[i]; cy += points[i + 1]; cz += points[i + 2]; }
   cx /= n; cy /= n; cz /= n;
-  const best = new Map<string, number>();
-  const bestD = new Map<string, number>();
+  const b = bbox(points);
+  const best = new Map<number, number>();
+  const bestD = new Map<number, number>();
   for (let i = 0; i < n; i++) {
     const x = points[3 * i], y = points[3 * i + 1], z = points[3 * i + 2];
-    const key = `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+    // integer cell coords relative to the bbox min; < 2^16 each for any sane cell size
+    const key = (Math.floor((x - b.min[0]) / cell) * 65536 + Math.floor((y - b.min[1]) / cell)) * 65536 + Math.floor((z - b.min[2]) / cell);
     const d = (x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2;
     const prev = bestD.get(key);
     if (prev === undefined || d > prev) { best.set(key, i); bestD.set(key, d); }

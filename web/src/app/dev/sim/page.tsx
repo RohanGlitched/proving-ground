@@ -7,7 +7,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { createSim, type SimClient, type TrialSummary, type SceneSpec } from "@/sim/client";
-import { glbToParts } from "@/sim/assets";
 
 const CHAIR_URL = "/dev/chair-parts.glb";
 
@@ -46,6 +45,7 @@ export default function SimDevPage() {
 
     const sim = createSim();
     simRef.current = sim;
+    (window as unknown as { __pgSim: SimClient }).__pgSim = sim; // dev hook for console experiments
     const robotMeshes: THREE.Mesh[] = [];
     const objectGroups: THREE.Group[] = [];
     let disposed = false;
@@ -66,7 +66,7 @@ export default function SimDevPage() {
         world.add(m);
       }));
       const buf = await (await fetch(CHAIR_URL)).arrayBuffer();
-      const asset = await glbToParts(new Uint8Array(buf));
+      const asset = await sim.parseGlb(buf.slice(0)); // off the main thread
       add(`chair: ${asset.parts.length} parts, ${asset.mass.toFixed(2)} kg, ${asset.bboxMeters.size.map((s) => s.toFixed(2)).join(" x ")} m`);
       const gltf = await new GLTFLoader().parseAsync(buf.slice(0), "");
       const g = new THREE.Group();

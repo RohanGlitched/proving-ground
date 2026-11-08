@@ -14,8 +14,11 @@ import {
 import type { InitResult, Request, SceneResult, WorkerEvent } from './protocol';
 import type { Command, ContactEvent, FrameLayout, NavMode, Pose2, RobotStatus, RobotVisual, SceneSpec, TrialOptions, TrialResult, TrialSummary } from './types';
 
-export type { InitResult, SceneResult };
+import type { GlbOptions, ObjectAsset } from './assets';
+
+export type { InitResult, SceneResult, GlbOptions, ObjectAsset };
 export * from './types';
+export * from './frame';
 
 export interface FrameHeader {
   simTime: number;
@@ -70,6 +73,8 @@ export interface SimClient {
   onPerf(cb: (p: { realTimeFactor: number; stepsPerSecond: number }) => void): () => void;
   /** Runs trials in a separate worker so the live view keeps running. */
   runTrials(options: TrialOptions, onProgress?: (done: number, n: number, r: TrialResult) => void): Promise<TrialSummary>;
+  /** GLB bytes -> collision parts (Z-up), off the main thread (in the trials worker). The buffer is transferred. */
+  parseGlb(bytes: ArrayBuffer, options?: GlbOptions): Promise<ObjectAsset>;
   dispose(): void;
 }
 
@@ -108,12 +113,12 @@ class Rpc {
       this.pending.clear();
     };
   }
-  call<T>(msg: Record<string, unknown> & { type: Request['type'] }, onProgress?: (done: number, n: number, r: TrialResult) => void): Promise<T> {
+  call<T>(msg: Record<string, unknown> & { type: Request['type'] }, onProgress?: (done: number, n: number, r: TrialResult) => void, transfer: Transferable[] = []): Promise<T> {
     const id = this.next++;
     if (onProgress) this.progress.set(id, onProgress);
     return new Promise<T>((res, rej) => {
       this.pending.set(id, { res: res as (v: unknown) => void, rej });
-      this.worker.postMessage({ ...msg, id });
+      this.worker.postMessage({ ...msg, id }, transfer);
     });
   }
 }
@@ -164,6 +169,14 @@ export function createSim(opts: SimOptions = {}): SimClient {
   });
   let trialsRpc: Rpc | null = null;
   let trialsReady: Promise<unknown> | null = null;
+  const trials = async () => {
+    if (!trialsRpc) {
+      trialsRpc = new Rpc(spawn(), () => {});
+      trialsReady = trialsRpc.call({ type: 'init', base, role: 'trials', shared: false });
+    }
+    await trialsReady;
+    return trialsRpc;
+  };
 
   const client: SimClient = {
     ready: null as unknown as Promise<InitResult>,
@@ -213,12 +226,12 @@ export function createSim(opts: SimOptions = {}): SimClient {
     onStatus(cb) { statusCbs.add(cb); return () => statusCbs.delete(cb); },
     onPerf(cb) { perfCbs.add(cb); return () => perfCbs.delete(cb); },
     async runTrials(options, onProgress) {
-      if (!trialsRpc) {
-        trialsRpc = new Rpc(spawn(), () => {});
-        trialsReady = trialsRpc.call({ type: 'init', base, role: 'trials', shared: false });
-      }
-      await trialsReady;
-      return trialsRpc.call<TrialSummary>({ type: 'runTrials', options }, onProgress);
+      const t = await trials();
+      return t.call<TrialSummary>({ type: 'runTrials', options }, onProgress);
+    },
+    async parseGlb(bytes, options) {
+      const t = await trials();
+      return t.call<ObjectAsset>({ type: 'parseGlb', bytes, options }, undefined, [bytes]);
     },
     dispose() {
       rpc.worker.terminate();
