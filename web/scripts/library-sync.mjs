@@ -26,7 +26,8 @@ let copied = 0;
 for (const e of lib.items) {
   const keys = (await src.list(`objects/${e.id}/`)).concat(e.hasInput ? [`inputs/${e.id}.jpg`] : []);
   for (const k of keys) {
-    if (remote.has(k)) continue;
+    // small JSON files are always refreshed (reprocessing adds fields); big files only when missing
+    if (remote.has(k) && !k.endsWith(".json")) continue;
     const g = await src.get(k);
     if (!g) continue;
     if (!dry) await dst.put(k, g.body, { contentType: g.contentType });
