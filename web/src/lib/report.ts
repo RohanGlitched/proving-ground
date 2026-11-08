@@ -43,10 +43,10 @@ export const REPORT = {
     ["Shove of 250 N for 0.2 s", "falls 5 of 10"],
   ] as string[][],
   results: [
-    "Blind walk into a 4.9 kg Lux3D chair: the robot hits it, the contact names the chair, and it shoves the chair aside and reaches the flag 10 of 10 times.",
-    "Planner mode routes around the same chair 10 of 10 times without touching it.",
-    "A 6 cm or 12 cm fixed step trips it every time, and the trial says what it tripped on. A 20 kg crate stops it dead.",
-    "With one 170 N shove per run, the course in the plot is a coin flip: that is the kind of number a robotics team wants to see before a real robot does.",
+    "A Lux3D park bench across the path: blind walk reaches the flag 0 of 10 times (it pushes a 56 kg bench and stalls); the planner routes around it 10 of 10. That gap is what perception is worth, measured.",
+    "Trip test of the 8-part Lux3D chair, 10 blind walks: 5 cleared, 1 fall, 4 stuck pushing it. The 0.55 kg sneaker and the 2.7 kg cone are cleared 10 of 10.",
+    "A kitchen-floor course (chair, sneaker, cone): 8 of 10 blind walks reach the flag.",
+    "Fixed 6 cm and 12 cm steps trip the robot every time, and every trial records what it tripped on.",
   ],
   extras: [
     ["extra-phone.png", "Snap from your phone", "Scan the QR code, photograph something real, and it lands in the desktop arena."],
