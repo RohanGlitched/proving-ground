@@ -43,7 +43,7 @@ export type PartsDoc = {
   parts: { name: string; count: number; points: number[] }[];
 };
 
-export const objectUrl = (id: string, file: "visual.glb" | "parts.json" | "meta.json" | "input.jpg") => `/api/objects/${id}/${file}`;
+export const objectUrl = (id: string, file: "visual.glb" | "parts.json" | "meta.json" | "input.jpg" | "thumb.webp") => `/api/objects/${id}/${file}`;
 
 async function json<T>(r: Response): Promise<T> {
   const body = await r.json().catch(() => ({}));

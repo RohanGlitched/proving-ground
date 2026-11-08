@@ -10,6 +10,7 @@ const FILES: Record<string, { key: (id: string) => string; type: string }> = {
   "parts.json": { key: (id) => `objects/${id}/parts.json`, type: "application/json" },
   "meta.json": { key: (id) => `objects/${id}/meta.json`, type: "application/json" },
   "input.jpg": { key: (id) => `inputs/${id}.jpg`, type: "image/jpeg" },
+  "thumb.webp": { key: (id) => `objects/${id}/thumb.webp`, type: "image/webp" },
 };
 
 /** GET /api/objects/:id/(visual.glb|parts.json|meta.json|input.jpg): immutable once published. */

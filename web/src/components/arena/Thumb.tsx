@@ -15,10 +15,15 @@ export function Thumb({ id, alt, className = "" }: { id: string; alt: string; cl
       (ents) => {
         if (!ents.some((e) => e.isIntersecting)) return;
         io.disconnect();
-        import("@/three/thumbs")
-          .then(({ thumbnail }) => thumbnail(objectUrl(id, "visual.glb")))
-          .then((s) => alive && setSrc(s))
-          .catch(() => alive && setFailed(true));
+        // a pre-rendered thumbnail when one exists, else render it here from the GLB
+        const pre = new Image();
+        pre.onload = () => alive && setSrc(pre.src);
+        pre.onerror = () =>
+          import("@/three/thumbs")
+            .then(({ thumbnail }) => thumbnail(objectUrl(id, "visual.glb")))
+            .then((s) => alive && setSrc(s))
+            .catch(() => alive && setFailed(true));
+        pre.src = objectUrl(id, "thumb.webp");
       },
       { rootMargin: "200px" },
     );
