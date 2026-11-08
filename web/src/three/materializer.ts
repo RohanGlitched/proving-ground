@@ -263,6 +263,12 @@ export class Materializer {
     this.apply(this.t);
   }
 
+  /** scrub to an absolute time (scroll-driven views) */
+  seek(t: number) {
+    this.t = Math.max(0, Math.min(MATERIALIZE_SECONDS, t));
+    this.apply(this.t);
+  }
+
   update(dt: number) {
     if (this.t >= MATERIALIZE_SECONDS) return true;
     this.t = Math.min(MATERIALIZE_SECONDS, this.t + dt);
