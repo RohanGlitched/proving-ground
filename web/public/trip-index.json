@@ -1,0 +1,50 @@
+{
+ "generatedAt": 1794169071507,
+ "method": "object 1.4 m ahead, 10 seeded blind walks, start jitter 10 cm / 10 deg, object jitter 10 cm / 34 deg, 14 s limit",
+ "items": {
+  "2kde4rldpa": {
+   "slug": "kitchen-chair",
+   "name": "Kitchen chair",
+   "n": 10,
+   "passes": 5,
+   "falls": 1,
+   "timeouts": 4,
+   "touched": 10,
+   "mass": 5.1452,
+   "seed": 11
+  },
+  "e1xwqhzq4m": {
+   "slug": "sneaker",
+   "name": "Sneaker",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 0.5486000000000001,
+   "seed": 11
+  },
+  "eb2mk9glhr": {
+   "slug": "traffic-cone",
+   "name": "Traffic cone",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 2.65548,
+   "seed": 11
+  },
+  "tgsfc323l1": {
+   "slug": "park-bench",
+   "name": "Park bench",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 55.936,
+   "seed": 11
+  }
+ }
+}

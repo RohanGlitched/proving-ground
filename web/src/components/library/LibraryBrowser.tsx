@@ -6,6 +6,7 @@ import { Thumb } from "@/components/arena/Thumb";
 import { sizeLabel } from "@/components/arena/LibraryDrawer";
 import { ObjectViewer } from "./ObjectViewer";
 import { Stamp } from "@/components/ui/marks";
+import { runTripTest, tripIndex, verdict, type TripResult } from "@/lib/client/trips";
 
 type Sort = "new" | "big" | "parts";
 
@@ -18,6 +19,20 @@ export function LibraryBrowser() {
   const [open, setOpen] = useState<LibraryEntry | null>(null);
   const [packing, setPacking] = useState(false);
   const [packMsg, setPackMsg] = useState<string | null>(null);
+  const [trips, setTrips] = useState<Record<string, TripResult>>({});
+  const [tripping, setTripping] = useState(false);
+  useEffect(() => {
+    tripIndex().then(setTrips);
+  }, []);
+  async function tripTest(e: LibraryEntry) {
+    setTripping(true);
+    try {
+      const r = await runTripTest(e.id, e.name);
+      setTrips((t) => ({ ...t, [e.id]: r }));
+    } finally {
+      setTripping(false);
+    }
+  }
 
   useEffect(() => {
     getLibrary()
@@ -136,6 +151,13 @@ export function LibraryBrowser() {
               <div className="border-t border-ink/8 px-3 py-2.5">
                 <div className="truncate font-semibold">{e.name}</div>
                 <div className="data mt-0.5 truncate text-[11.5px] text-ink-3">{sizeLabel(e.size)}</div>
+                {trips[e.id] && (
+                  <div className="mt-2">
+                    <Stamp tone={verdict(trips[e.id]).tone} rotate={-3} className="!px-1.5 !text-[10.5px]">
+                      {verdict(trips[e.id]).label}
+                    </Stamp>
+                  </div>
+                )}
                 <div className="mt-1.5 flex items-center gap-2 text-[12px] text-ink-3">
                   <span>{e.parts} {e.parts === 1 ? "part" : "parts"}</span>
                   <span aria-hidden>·</span>
@@ -184,6 +206,26 @@ export function LibraryBrowser() {
                   <button onClick={() => pack(open)} disabled={packing} className="inline-flex h-11 items-center rounded-[10px] border border-ink/20 px-5 font-semibold hover:bg-ink/5 disabled:opacity-50">
                     {packing ? "Building the pack…" : "Download robot-ready pack"}
                   </button>
+                </div>
+                <div className="sheet mt-5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[13px] font-semibold text-ink-3">Trip test · 10 blind walks, object 1.4 m ahead</div>
+                    {trips[open.id] && (
+                      <Stamp tone={verdict(trips[open.id]).tone} rotate={-4} animate>
+                        {verdict(trips[open.id]).label}
+                      </Stamp>
+                    )}
+                  </div>
+                  {trips[open.id] ? (
+                    <p className="mt-2 text-[14px] text-ink-2">
+                      {trips[open.id].passes} reached the flag, {trips[open.id].falls} fell, {trips[open.id].timeouts} got stuck pushing it.
+                      {trips[open.id].live ? " Run just now in your browser." : ""}
+                    </p>
+                  ) : (
+                    <button onClick={() => tripTest(open)} disabled={tripping} className="mt-3 h-10 rounded-[8px] bg-ink px-4 text-[14px] font-semibold text-white disabled:opacity-50">
+                      {tripping ? "Walking into it ten times…" : "Run the trip test here (about 5 s)"}
+                    </button>
+                  )}
                 </div>
                 <div className="mt-4">
                   <div className="text-[13px] font-semibold text-ink-3">Export with Lux3D</div>
