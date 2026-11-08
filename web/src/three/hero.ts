@@ -144,7 +144,7 @@ export function startHero(canvas: HTMLCanvasElement, onStatus: (s: HeroStatus) =
         }
         if (f.header.simTime > 16 || performance.now() - t0 > 22000) break;
       }
-      onStatus({ phase: "result", result, on: result === "fell" && lastTouch ? names.get(lastTouch) : undefined, round });
+      onStatus({ phase: "result", result, on: result === "fell" && lastTouch ? names.get(lastTouch) : undefined, round, object: placements.map((p) => p.name).join(", "), contacts: sim.latest()?.header.contactCount });
       await wait(result === "fell" ? 3200 : 2200);
       await sim.pause();
       round++;
