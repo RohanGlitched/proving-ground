@@ -130,6 +130,11 @@ export class ArenaView {
     this.stage = new Stage({ canvas, dark: true });
     this.stage.camera.position.set(-2.2, 2.6, 4.2);
     this.stage.controls?.target.set(1.6, 0.5, 0);
+    if (this.stage.camera.aspect < 1) {
+      // portrait phones: look down the course from further back so start, objects and flag all fit
+      this.stage.camera.position.set(-1.4, 5.2, 4.6);
+      this.stage.controls?.target.set(2.0, 0.2, 0);
+    }
     this.stage.scene.add(this.goal, this.start, this.trails, this.marks);
     this.selectedRing = new THREE.Mesh(
       new THREE.RingGeometry(0.5, 0.54, 64),

@@ -73,7 +73,7 @@ export function CameraFrame({ label, clock, pxPerMetre, rec = true, right, botto
             </>
           )}
         </div>
-        <div className="data absolute bottom-5 left-6 flex items-end gap-2 text-[11px] text-white/70">
+        <div className="data absolute bottom-5 left-6 hidden items-end gap-2 text-[11px] text-white/70 sm:flex">
           <div ref={barRef} className="relative h-2 border-x border-b border-white/70 transition-[width] duration-200" style={{ width: 0, opacity: 0 }} />
           <span>1 m</span>
         </div>

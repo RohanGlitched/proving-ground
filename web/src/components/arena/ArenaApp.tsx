@@ -344,7 +344,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     ) : null;
 
   return (
-    <div className="flex h-[100svh] flex-col bg-concrete">
+    <div className="flex min-h-[100svh] flex-col bg-concrete md:h-[100svh]">
       {/* top bar */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-ink/10 px-3 sm:px-4">
         <Link href="/" className="flex items-center gap-2 font-bold [font-stretch:118%]" aria-label="Proving Ground home">
@@ -402,7 +402,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
                 <div>{`${placed.length} OBJECTS`}</div>
               </div>
             }
-            bottomRight={mode === "manual" ? <span>W A S D or arrow keys to steer</span> : <span>Drag objects or the flag</span>}
+            bottomRight={<span className="hidden lg:inline">{mode === "manual" ? "W A S D or arrow keys to steer" : "Drag objects or the flag"}</span>}
           >
             <canvas ref={canvasRef} className="block h-full w-full touch-none" aria-label="Arena: drag objects and the goal flag; the robot walks when you press Walk" />
             {boot !== "ready" && (
@@ -429,7 +429,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
               </div>
             )}
             {/* run controls */}
-            <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2">
+            <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 sm:bottom-5">
               {running ? (
                 <button onClick={pause} className="h-11 rounded-[10px] bg-white px-5 font-semibold text-ink">
                   Pause
@@ -446,16 +446,17 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
                 onClick={runTrials}
                 disabled={boot !== "ready" || mode === "manual" || trialProgress != null || !placed.length}
                 title={mode === "manual" ? "Trials need Blind walk or Planner mode" : undefined}
-                className="h-11 rounded-[10px] border border-white/25 bg-black/40 px-4 font-semibold text-white disabled:opacity-50"
+                className="h-11 whitespace-nowrap rounded-[10px] border border-white/25 bg-black/40 px-3 font-semibold text-white disabled:opacity-50 sm:px-4"
               >
-                Run 10 trials
+                <span className="sm:hidden">10 trials</span>
+                <span className="hidden sm:inline">Run 10 trials</span>
               </button>
             </div>
           </CameraFrame>
         </div>
 
         {/* left rail */}
-        <aside className="order-2 flex min-h-0 flex-col border-ink/10 md:order-1 md:w-[330px] md:shrink-0 md:border-r">
+        <aside className="order-2 flex flex-col border-ink/10 md:order-1 md:min-h-0 md:w-[330px] md:shrink-0 md:border-r">
           <div role="tablist" className="flex shrink-0 gap-1 px-3 pt-3">
             {(
               [
@@ -474,11 +475,11 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
               </button>
             ))}
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <div className="p-3 md:min-h-0 md:flex-1 md:overflow-y-auto">
             {tab === "make" ? (
               <MakePanel onReady={onMade} />
             ) : (
-              <div className="h-[46svh] md:h-full">
+              <div className="h-[60svh] md:h-full">
                 <LibraryDrawer items={library} loading={libLoading} onAdd={addEntry} />
               </div>
             )}
