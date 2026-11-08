@@ -65,7 +65,19 @@ function HeroReadout({ status }: { status: HeroStatus }) {
   return (
     <div className="space-y-0.5 text-right">
       <div>{status.object ? `OBJECT ${status.object.toUpperCase()}` : "OBJECT —"}</div>
-      <div>{status.speed != null ? `ROBOT ${status.speed.toFixed(2)} M/S` : "ROBOT —"}</div>
+      <div>
+        {status.phase === "making"
+          ? "LUX3D MATERIALIZING"
+          : status.phase === "walking"
+            ? "ROBOT WALKING · BLIND"
+            : status.phase === "result"
+              ? status.result === "goal"
+                ? "ROBOT REACHED THE FLAG"
+                : status.result === "fell"
+                  ? "ROBOT FELL"
+                  : "ROBOT TIMED OUT"
+              : "LOADING"}
+      </div>
       <div>{status.contacts != null ? `CONTACTS ${status.contacts}` : ""}</div>
     </div>
   );
