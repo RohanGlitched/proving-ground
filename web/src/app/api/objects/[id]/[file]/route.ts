@@ -1,0 +1,37 @@
+import { store } from "@/lib/storage";
+import { isId } from "@/lib/pipeline/config";
+import { errorResponse, json } from "@/lib/pipeline/http";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const FILES: Record<string, { key: (id: string) => string; type: string }> = {
+  "visual.glb": { key: (id) => `objects/${id}/visual.glb`, type: "model/gltf-binary" },
+  "parts.json": { key: (id) => `objects/${id}/parts.json`, type: "application/json" },
+  "meta.json": { key: (id) => `objects/${id}/meta.json`, type: "application/json" },
+  "input.jpg": { key: (id) => `inputs/${id}.jpg`, type: "image/jpeg" },
+};
+
+/** GET /api/objects/:id/(visual.glb|parts.json|meta.json|input.jpg): immutable once published. */
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string; file: string }> }) {
+  try {
+    const { id, file } = await ctx.params;
+    const f = FILES[file];
+    if (!f || !isId(id)) return json({ error: "Not found." }, 404);
+    // input photos are only served once their object is published
+    if (file === "input.jpg" && !(await store().get(`objects/${id}/meta.json`))) return json({ error: "Not found." }, 404);
+    const g = await store().get(f.key(id));
+    if (!g) return json({ error: "Not found." }, 404);
+    return new Response(new Uint8Array(g.body), {
+      headers: {
+        "content-type": f.type,
+        "content-length": String(g.body.length),
+        "cache-control": "public, max-age=31536000, immutable",
+        etag: `"${g.generation}"`,
+        "access-control-allow-origin": "*",
+      },
+    });
+  } catch (e) {
+    return errorResponse(e);
+  }
+}
