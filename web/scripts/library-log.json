@@ -1160,12 +1160,40 @@
     },
     "trash-can": {
       "jobId": "m6dhn5t638",
-      "status": "running",
+      "status": "done",
       "startedAt": "2026-11-08T22:39:50.186Z",
       "balanceBefore": 2242,
+      "version": "G1-Turbo",
+      "objectId": "m6dhn5t638",
+      "credits": 13,
+      "balanceAfter": 2229,
+      "measuredCredits": 13,
+      "seconds": 138,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 109,
+        "fetch-result": 5,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 8,
+        "publish": 2
+      },
+      "process": {
+        "parts": 1,
+        "tris": 22344,
+        "visualKB": 584,
+        "partsKB": 4
+      },
+      "finishedAt": "2026-11-08T22:42:07.712Z"
+    },
+    "mailbox": {
+      "jobId": "3x0i6pg7hl",
+      "status": "running",
+      "startedAt": "2026-11-08T22:42:10.581Z",
+      "balanceBefore": 2229,
       "version": "G1-Turbo"
     }
   },
-  "totalCredits": 1314,
+  "totalCredits": 1327,
   "runs": []
 }

@@ -505,14 +505,14 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   const [shared, setShared] = useState<{ title: string; stats: { runs: number; trials: number; passes: number; bestPassRate: number | null } | null } | null>(null);
   const steer = useRef({ f: 0, t: 0 });
   const sendSteer = () => simRef.current?.setCommand({ vx: steer.current.f * 0.6, vy: 0, yaw: steer.current.t * 0.7 });
-  async function share(force = false) {
+  async function share(force = false, titleOverride?: string): Promise<string | null> {
     if (!force && (!title.trim() || title.trim() === "Untitled course")) {
       setNaming(true);
-      return;
+      return null;
     }
     setNaming(false);
     const doc: CourseDoc = {
-      title: title.trim() || "Untitled course",
+      title: (titleOverride ?? title).trim() || "Untitled course",
       objects: placed.map((p) => ({ objectId: p.objectId, name: p.name, x: +p.x.toFixed(3), y: +p.y.toFixed(3), yaw: +p.yaw.toFixed(3), density: p.density, kind: p.kind })),
       start,
       goal: { x: +goal.x.toFixed(3), y: +goal.y.toFixed(3) },
@@ -528,10 +528,32 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       await navigator.clipboard?.writeText(url).catch(() => {});
       setToast(`Saved. Link copied: ${url.replace(/^https?:\/\//, "")}`);
       if (trials) postResult(id, { passRate: trials.passRate, trials: 10, seed: trials.trials[0]?.seed ?? 0, mode }).catch(() => {});
+      setTimeout(() => setToast(null), 4500);
+      return url;
     } catch (e) {
       setToast(`Could not save: ${(e as Error).message}`);
     }
     setTimeout(() => setToast(null), 4500);
+    return null;
+  }
+
+  /** One tap after a fall: save the course (named after what tripped it) and open a post with the link. */
+  async function shareFail() {
+    const w = window.open("about:blank", "_blank"); // opened now, inside the click, so pop-up blockers allow it
+    const names = [...new Set(placed.filter((p) => p.kind !== "mover").map((p) => p.name))].slice(0, 3);
+    const untitled = !title.trim() || title.trim() === "Untitled course";
+    const t = untitled ? (names.length ? `Tripped by ${names.join(", ")}` : "Robot down") : title;
+    if (untitled) setTitle(t);
+    const url = await share(true, t);
+    if (!url) {
+      w?.close();
+      return;
+    }
+    const how = trials ? `It got through ${Math.round(trials.passRate * 100)}% of 10 runs.` : `It fell after ${(headerRef.current?.t ?? 0).toFixed(1)} s.`;
+    const text = `I built a course from Lux3D objects that trips Unitree's G1 walking policy. ${how} Can you get it through? #Manycorehackathon`;
+    const intent = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    if (w) w.location.href = intent;
+    else location.href = intent;
   }
 
   // ?rec=1: expose the arena to the demo-video recorder (camera moves, scripted actions)
@@ -654,7 +676,14 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
                 </div>
               </div>
             )}
-            <div className="absolute right-5 top-20 sm:right-8">{statusStamp}</div>
+            <div className="absolute right-5 top-20 flex flex-col items-end gap-3 sm:right-8">
+              {statusStamp}
+              {(status === "fell" || (trials && trials.passRate < 0.5)) && trialProgress == null && placed.length > 0 && (
+                <button onClick={shareFail} className="rounded-[8px] bg-white/90 px-3 py-1.5 text-[13px] font-semibold text-ink shadow hover:bg-white">
+                  Share this fail
+                </button>
+              )}
+            </div>
             {shared && (
               <div className="absolute left-4 top-14 max-w-[min(420px,80%)] rounded-[8px] bg-black/60 px-3 py-2 text-[13px] text-white backdrop-blur-sm sm:left-6">
                 <div className="font-semibold">Shared course: {shared.title}</div>
