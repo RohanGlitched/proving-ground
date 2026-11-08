@@ -156,6 +156,10 @@ export class ArenaView {
       // portrait phones: look down the course from further back so start, objects and flag all fit
       this.stage.camera.position.set(-1.4, 5.2, 4.6);
       this.stage.controls?.target.set(2.0, 0.2, 0);
+    } else if (this.stage.camera.aspect < 1.45) {
+      // narrow desktop windows (~1024 px with both rails): pull back so the start pad stays in frame
+      this.stage.camera.position.set(-2.6, 3.4, 5.6);
+      this.stage.controls?.target.set(1.9, 0.4, 0);
     }
     this.stage.scene.add(this.goal, this.start, this.trails, this.marks);
     this.selectedRing = new THREE.Mesh(
