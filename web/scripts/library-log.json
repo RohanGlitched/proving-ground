@@ -1,0 +1,156 @@
+{
+  "items": {
+    "traffic-cone": {
+      "jobId": "eb2mk9glhr",
+      "status": "done",
+      "startedAt": "2026-11-08T19:49:52.421Z",
+      "balanceBefore": 3556,
+      "version": "G1-Turbo",
+      "objectId": "eb2mk9glhr",
+      "credits": 13,
+      "balanceAfter": 3543,
+      "measuredCredits": 13,
+      "seconds": 88,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 84,
+        "fetch-result": 2,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 0,
+        "publish": 0
+      },
+      "process": {
+        "parts": 1,
+        "tris": 18210,
+        "visualKB": 313,
+        "partsKB": 8
+      },
+      "finishedAt": "2026-11-08T19:51:20.101Z"
+    },
+    "park-bench": {
+      "jobId": "tgsfc323l1",
+      "status": "done",
+      "startedAt": "2026-11-08T19:51:20.592Z",
+      "balanceBefore": 3543,
+      "version": "G1-Turbo",
+      "objectId": "tgsfc323l1",
+      "credits": 43,
+      "balanceAfter": 3500,
+      "measuredCredits": 43,
+      "seconds": 179,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 85,
+        "fetch-result": 2,
+        "upload-for-split": 4,
+        "part-split": 86,
+        "process": 1,
+        "publish": 0
+      },
+      "process": {
+        "parts": 5,
+        "tris": 19294,
+        "visualKB": 685,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T19:54:19.634Z"
+    },
+    "jogger": {
+      "jobId": "kvu0fn9kex",
+      "status": "done",
+      "startedAt": "2026-11-08T20:10:55.640Z",
+      "balanceBefore": 3417,
+      "version": "G1-Turbo",
+      "credits": 34,
+      "balanceAfter": 3383,
+      "measuredCredits": 34,
+      "seconds": 36,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 79,
+        "fetch-result": 6,
+        "upload-for-rig": 11,
+        "rig": 63,
+        "upload-for-retarget": 13,
+        "retarget": 120,
+        "process": 12,
+        "publish": 3
+      },
+      "finishedAt": "2026-11-08T20:16:26.828Z",
+      "objectId": "kvu0fn9kex",
+      "process": {
+        "parts": 1,
+        "tris": 18104,
+        "visualKB": 972,
+        "partsKB": 4
+      },
+      "note": "resumed after the retarget JSON-output fix; first attempt (A-pose prompt) refused by the rigger"
+    },
+    "traffic-cone-g1": {
+      "jobId": "d8ilvur5zc",
+      "status": "done",
+      "startedAt": "2026-11-08T19:59:34.269Z",
+      "balanceBefore": 3487,
+      "version": "G1",
+      "objectId": "d8ilvur5zc",
+      "credits": 20,
+      "balanceAfter": 3467,
+      "measuredCredits": 20,
+      "seconds": 288,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 285,
+        "fetch-result": 2,
+        "upload-for-split": "skipped",
+        "part-split": "skipped",
+        "process": 0,
+        "publish": 0
+      },
+      "process": {
+        "parts": 1,
+        "tris": 7586,
+        "visualKB": 150,
+        "partsKB": 9
+      },
+      "finishedAt": "2026-11-08T20:04:22.257Z"
+    },
+    "park-bench-g1": {
+      "jobId": "pzcd9wndzl",
+      "status": "done",
+      "startedAt": "2026-11-08T20:04:22.620Z",
+      "balanceBefore": 3467,
+      "version": "G1",
+      "objectId": "pzcd9wndzl",
+      "credits": 50,
+      "balanceAfter": 3417,
+      "measuredCredits": 50,
+      "seconds": 382,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 295,
+        "fetch-result": 2,
+        "upload-for-split": 4,
+        "part-split": 80,
+        "process": 1,
+        "publish": 0
+      },
+      "process": {
+        "parts": 4,
+        "tris": 21210,
+        "visualKB": 455,
+        "partsKB": 8
+      },
+      "finishedAt": "2026-11-08T20:10:44.670Z"
+    },
+    "jogger-attempt1": {
+      "jobId": "vvckfrwtsl",
+      "status": "failed",
+      "error": "MODEL_NOT_RIGGABLE (arms down)",
+      "credits": 13,
+      "measuredCredits": 13
+    }
+  },
+  "totalCredits": 173,
+  "runs": []
+}

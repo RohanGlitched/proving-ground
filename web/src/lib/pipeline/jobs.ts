@@ -413,8 +413,14 @@ function skip(job: Job, name: StageName, note: string) {
   }
 }
 
-function pickGlb(outputs: { content: string; isUrl: boolean }[]): string | undefined {
+/** The model URL among a task's outputs: plain URLs, or URLs inside JSON outputs (retarget answers
+ *  {"actions":[{"animation_id":"Walk_Loop","status":"success","animationGlbUrl":"…"}]}). */
+export function pickGlb(outputs: { content: string; isUrl: boolean }[]): string | undefined {
   const urls = outputs.filter((o) => o.isUrl).map((o) => o.content);
+  for (const o of outputs) {
+    if (o.isUrl) continue;
+    for (const m of o.content.matchAll(/https?:\/\/[^"'\s\\]+/g)) urls.push(m[0]);
+  }
   return urls.find((u) => /\.glb(\?|$)/i.test(u)) ?? urls[0];
 }
 
@@ -684,6 +690,7 @@ async function step(job: Job, deps: Deps): Promise<StepResult> {
         wholeGlb: job.kind === "object" && job.work.splitKey ? (await s.get(job.work.genKey!))?.body : undefined,
         animated: job.kind !== "object",
         inPlace: job.kind === "pedestrian" ? true : undefined,
+        clipName: job.kind === "pedestrian" ? "Walk_Loop" : undefined,
       });
       await s.put(`objects/${id}/visual.glb`, r.visual, { contentType: "model/gltf-binary" });
       await s.put(`objects/${id}/parts.json`, r.partsJson, { contentType: "application/json" });

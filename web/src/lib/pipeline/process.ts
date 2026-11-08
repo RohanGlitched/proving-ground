@@ -327,6 +327,8 @@ export type ProcessInput = {
   /** Animated models keep their hierarchy and skip quantization. */
   animated?: boolean;
   inPlace?: boolean;
+  /** Renames a single animation clip (Lux3D names the retargeted walk "animation_1"). */
+  clipName?: string;
   /** The unsplit generation GLB; its closed volume is shared out across split parts. */
   wholeGlb?: Buffer;
 };
@@ -339,6 +341,7 @@ export async function processModel(input: ProcessInput): Promise<ProcessResult> 
   const lux3dMetadata = (root.getExtras() as Record<string, unknown>)?.lux3d_metadata;
   const animated = input.animated || root.listAnimations().length > 0 || root.listSkins().length > 0;
   const trisIn = triangleCount(doc);
+  if (input.clipName && root.listAnimations().length === 1) root.listAnimations()[0].setName(input.clipName);
 
   // 1. parts, in scene order; unusable slivers are removed from both files
   let nodes = meshNodes(doc);

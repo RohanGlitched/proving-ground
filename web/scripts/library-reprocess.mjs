@@ -33,7 +33,7 @@ for (const e of lib.items) {
       continue;
     }
     const whole = job.kind === "object" && job.work.splitKey ? (await s.get(job.work.genKey))?.body : undefined;
-    input = { glb: g.body, split: job.kind === "object" && !!job.work.splitKey, animated: job.kind !== "object", inPlace: job.kind === "pedestrian" ? true : undefined, wholeGlb: whole };
+    input = { glb: g.body, split: job.kind === "object" && !!job.work.splitKey, animated: job.kind !== "object", inPlace: job.kind === "pedestrian" ? true : undefined, clipName: job.kind === "pedestrian" ? "Walk_Loop" : undefined, wholeGlb: whole };
   } else if (SEEDS[e.slug] && existsSync(path.join(WEB, SEEDS[e.slug].glb))) {
     const sd = SEEDS[e.slug];
     input = { glb: readFileSync(path.join(WEB, sd.glb)), split: sd.split, wholeGlb: sd.whole ? readFileSync(path.join(WEB, sd.whole)) : undefined };

@@ -94,7 +94,8 @@ for (const it of todo) {
   entry.error = job.error;
   entry.credits = job.work.credits;
   entry.balanceAfter = after;
-  entry.measuredCredits = after === null ? null : before - after;
+  // a resumed job measures from the balance when it first started
+  entry.measuredCredits = after === null ? null : (entry.balanceBefore ?? before) - after;
   entry.seconds = Math.round((Date.now() - t0) / 1000);
   entry.stages = Object.fromEntries(job.stages.map((s) => [s.name, s.startedAt && s.endedAt ? Math.round((s.endedAt - s.startedAt) / 1000) : s.status]));
   entry.process = job.work.process ? { parts: job.work.process.parts, tris: job.work.process.tris, visualKB: Math.round(job.work.process.visualBytes / 1024), partsKB: Math.round(job.work.process.partsBytes / 1024) } : undefined;
