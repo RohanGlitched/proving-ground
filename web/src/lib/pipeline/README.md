@@ -36,6 +36,21 @@ Both files use the Lux3D frame unchanged: **Y-up, metres, origin at the bounding
 spans y = −h/2…h/2; the sim lifts it to the floor). `lux3d_metadata.bbox` in the raw GLB lists the extents in
 Z-up order, so bbox and size here are measured from the geometry.
 
+## People and moving things
+
+- **Pedestrians**: text-to-3D with a strict T-pose prompt (the rigger refuses arms held by the body with
+  `MODEL_NOT_RIGGABLE`; one automatic re-generation with a blunter prompt), rig (52 Mixamo-style joints), then
+  retarget `Walk_Loop` with `animateInPlace: true`. Retarget answers with JSON
+  (`{"actions":[{"animation_id":"Walk_Loop","animationGlbUrl":…}]}`); that GLB holds mesh + skin + clip. The clip is
+  renamed `Walk_Loop` (1.33 s loop, hips stay in place: move the root along the path yourself). visual.glb keeps the
+  skeleton and animation (no meshopt). parts.json has one part: the rest-pose body without the arms (a capsule-like
+  proxy, about 43 cm wide for a 1.8 m person). meta.size includes the T-pose arm span.
+- **Articulated**: text-to-3D, then articulation-animation with a motion prompt. It returns a **zip with a URDF**
+  (`urdf/robot.urdf` + one GLB per link), not an animation. Each link becomes a part (part-0 = first URDF link,
+  the fixed one), baked into the object frame; `parts.json.joints` holds each joint as
+  `{name, type, parent, child, pivot, axis, lower, upper}` in that frame. The original package is served as
+  `/api/objects/:id/urdf.zip`. Measured on a door: links frame + door, one revolute joint about +Y, 0 to 1.57 rad.
+
 ## Volume (for mass)
 
 `volume` (m³) per part and in total; mass = volume × density. `volumeMethod`:
@@ -70,6 +85,7 @@ default (13 vs 20 credits, 3.4× faster); `LUX_VERSION=G1` switches.
 | text object | text-to-3D Turbo 13 + part-split 30 | 43 (13 without split) |
 | pedestrian | text-to-3D 13 + rig 15 + retarget 6 | 34 |
 | articulated | text-to-3D 13 + articulation 28 | 41 |
+| export | multi-format export | 1 |
 
 G1 instead of Turbo costs 20 for either generator. Multi-format export is 1.
 
