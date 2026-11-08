@@ -360,6 +360,21 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     setTimeout(() => setToast(null), 4500);
   }
 
+  // ?rec=1: expose the arena to the demo-video recorder (camera moves, scripted actions)
+  const actions = useRef({ play, pause, reset, runTrials, share, addEntry, setPlaced, setGoal, setMode, setPushes, setTab });
+  actions.current = { play, pause, reset, runTrials, share, addEntry, setPlaced, setGoal, setMode, setPushes, setTab };
+  useEffect(() => {
+    if (boot !== "ready" || !new URLSearchParams(location.search).has("rec")) return;
+    (window as unknown as { __pg: unknown }).__pg = {
+      view: viewRef.current,
+      sim: simRef.current,
+      library: () => library,
+      placed: () => placed,
+      act: actions.current,
+      header: () => headerRef.current,
+    };
+  }, [boot, library, placed]);
+
   const sel = selected ? byUid.get(selected) : null;
   const selEntry = sel ? byId.get(sel.objectId) : null;
 
