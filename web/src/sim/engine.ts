@@ -300,7 +300,9 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
       mj.mj_forward(model, data);
       this.touching.clear();
       this.grid = null;
+      this.plan = null;
       this.nextReplan = 0;
+      this.eagerPlan();
     } else {
       this.reset();
     }
@@ -354,11 +356,22 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     this.cmd = { vx: 0, vy: 0, yaw: 0 };
     this.updateMovers(0);
     mj.mj_forward(model, data);
+    this.eagerPlan();
   }
 
-  setMode(mode: NavMode) { this.mode = mode; this.nextReplan = 0; }
+  setMode(mode: NavMode) { this.mode = mode; this.nextReplan = 0; this.eagerPlan(); }
+
+  /**
+   * In planner mode, plans right away so getPlan() has a path before the first step. The replan schedule is
+   * left at 0, so the first policy tick replans from the same state (trials stay bit-identical).
+   */
+  private eagerPlan() {
+    if (this.mode !== 'planner' || !this.data || this.status !== 'running') return;
+    this.replan(this.robotPose());
+    this.nextReplan = 0;
+  }
   setCommand(c: Partial<Command>) { Object.assign(this.manualCmd, c); }
-  setGoal(x: number, y: number) { this.goal = { x, y }; this.nextReplan = 0; if (this.status === 'goal') { this.status = 'running'; this.goalAt = null; } }
+  setGoal(x: number, y: number) { this.goal = { x, y }; this.nextReplan = 0; if (this.status === 'goal') { this.status = 'running'; this.goalAt = null; } this.eagerPlan(); }
   setSpeed(v: number) { this.nav.speed = v; }
 
   /** Applies a horizontal force to the pelvis for `duration` seconds starting now. */
