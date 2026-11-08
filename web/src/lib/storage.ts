@@ -26,6 +26,8 @@ export interface Store {
   put(key: string, body: Buffer | string, opts?: PutOptions): Promise<{ generation: string }>;
   list(prefix: string, limit?: number): Promise<string[]>;
   delete(key: string): Promise<void>;
+  /** A byte stream of the object (for responses bigger than a function may buffer: Vercel caps those at 4.5 MB). */
+  stream(key: string): Promise<{ body: ReadableStream<Uint8Array>; size: number; contentType: string } | null>;
   getJSON<T>(key: string): Promise<{ value: T; generation: string } | null>;
   putJSON(key: string, value: unknown, opts?: { ifGenerationMatch?: string }): Promise<{ generation: string }>;
 }
@@ -175,6 +177,19 @@ export function localStore(root: string): Store {
       await walk(root, "");
       return out.sort().slice(0, limit);
     },
+    async stream(key) {
+      assertKey(key);
+      try {
+        const st = await fs.stat(file(key));
+        const meta = await readMeta(key);
+        const { createReadStream } = await import("node:fs");
+        const { Readable } = await import("node:stream");
+        return { body: Readable.toWeb(createReadStream(file(key))) as ReadableStream<Uint8Array>, size: st.size, contentType: meta?.contentType ?? "application/octet-stream" };
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+        throw e;
+      }
+    },
     async delete(key) {
       assertKey(key);
       await fs.rm(file(key), { force: true });
@@ -294,6 +309,13 @@ export function gcsStore(bucket: string): Store {
         pageToken = j.nextPageToken;
       } while (pageToken && out.length < limit);
       return out;
+    },
+    async stream(key) {
+      assertKey(key);
+      const r = await fetch(`${base}/${encodeURIComponent(key)}?alt=media`, { headers: await auth(), cache: "no-store", signal: AbortSignal.timeout(120_000) });
+      if (r.status === 404) return null;
+      if (!r.ok || !r.body) throw new Error(`Storage read failed for ${key}: HTTP ${r.status}`);
+      return { body: r.body, size: Number(r.headers.get("content-length") ?? 0), contentType: r.headers.get("content-type") ?? "application/octet-stream" };
     },
     async delete(key) {
       assertKey(key);

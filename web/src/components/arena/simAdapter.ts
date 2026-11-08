@@ -23,6 +23,9 @@ export interface ArenaSim {
   /** planner path for the current scene (MuJoCo xy pairs), if the planner is on */
   path(): Promise<number[] | null>;
   runTrials(opts: Omit<TrialOptions, "scene"> & { scene?: SceneSpec }, onProgress?: (done: number, last?: TrialSummary["trials"][number]) => void): Promise<TrialSummary>;
+  /** replay trial `index` of the last runTrials in the live view, exactly */
+  replay(index: number): Promise<TrialSummary["trials"][number] | null>;
+  onPush(cb: (e: { t: number; force: number; angle: number }) => void): () => void;
   dispose(): void;
 }
 

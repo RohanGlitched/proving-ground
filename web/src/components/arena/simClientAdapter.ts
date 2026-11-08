@@ -5,6 +5,7 @@ import type { FrameLayout, SceneSpec } from "@/sim/types";
 export function create(): ArenaSim {
   const sim = createSim();
   let scene: SceneSpec | null = null;
+  let lastTrials: import("@/sim/types").TrialOptions | null = null;
   const frameCbs = new Set<(buf: Float32Array, layout: FrameLayout, h: FrameHeader) => void>();
   let raf = 0;
   let lastP: [number, number] | null = null;
@@ -71,7 +72,16 @@ export function create(): ArenaSim {
     async runTrials(opts, onProgress) {
       const s = opts.scene ?? scene;
       if (!s) throw new Error("No course to test yet");
-      return sim.runTrials({ ...opts, scene: s }, (done, _n, r) => onProgress?.(done, r));
+      lastTrials = { ...opts, scene: s };
+      return sim.runTrials(lastTrials, (done, _n, r) => onProgress?.(done, r));
+    },
+    async replay(index) {
+      if (!lastTrials) return null;
+      speed = 0;
+      return sim.replayTrial(lastTrials, index);
+    },
+    onPush(cb) {
+      return sim.onPush(cb);
     },
     dispose() {
       cancelAnimationFrame(raf);

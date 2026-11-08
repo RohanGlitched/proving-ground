@@ -128,6 +128,11 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
           headerRef.current = h;
           view.applyFrame(buf, layout.header, layout.robotGeoms);
         });
+        sim.onPush((e) => {
+          const h = headerRef.current;
+          if (h) view.showPush(h.pelvis, e.angle, e.force);
+          say(`Shoved with ${e.force.toFixed(0)} N`, "ink");
+        });
         const lastSaid = new Map<string, number>();
         offContact = sim.onContact((c: ContactEvent) => {
           const uid = c.entityId;
@@ -385,6 +390,24 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       say(`Trials stopped: ${(e as Error).message}`, "fault");
     } finally {
       setTrialProgress(null);
+    }
+  }
+
+  const [replaying, setReplaying] = useState<number | null>(null);
+  async function replay(i: number) {
+    const sim = simRef.current;
+    if (!sim || !trials) return;
+    setReplaying(i);
+    setLog([]);
+    prevStatus.current = "running";
+    setStatus("running");
+    setRunning(true);
+    say(`Replaying run ${String(i + 1).padStart(2, "0")} exactly (same seed)`, "ink");
+    try {
+      await sim.replay(i);
+    } finally {
+      setReplaying(null);
+      setRunning(false);
     }
   }
 
@@ -701,7 +724,14 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
               Shove the robot once per trial (170 N)
             </label>
 
-            <ResultsSheet summary={trials} running={trialProgress} names={Object.fromEntries(placed.map((p) => [p.uid, p.name]))} mode={mode} />
+            <ResultsSheet
+              summary={trials}
+              running={trialProgress}
+              names={Object.fromEntries(placed.map((p) => [p.uid, p.name]))}
+              mode={mode}
+              onReplay={replay}
+              replaying={replaying}
+            />
 
             <div>
               <h3 className="text-[13px] font-semibold text-ink-3">Log</h3>

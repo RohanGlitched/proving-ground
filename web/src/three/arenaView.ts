@@ -387,6 +387,18 @@ export class ArenaView {
     }
   }
 
+  private pushArrows: { obj: THREE.Object3D; life: number }[] = [];
+  /** a red arrow at the robot's pelvis showing a shove (angle: MuJoCo world radians from +X toward +Y) */
+  showPush(pelvis: [number, number, number], angle: number, force: number) {
+    const dir = new THREE.Vector3(Math.cos(angle), 0, -Math.sin(angle));
+    const len = 0.35 + Math.min(0.5, force / 600);
+    const origin = new THREE.Vector3(pelvis[0], pelvis[2], -pelvis[1]).sub(dir.clone().multiplyScalar(len + 0.15));
+    const arrow = new THREE.ArrowHelper(dir, origin, len, 0xe0362c, 0.14, 0.09);
+    (arrow.line.material as THREE.LineBasicMaterial).linewidth = 3;
+    this.stage.scene.add(arrow);
+    this.pushArrows.push({ obj: arrow, life: 1.4 });
+  }
+
   setShowHulls(v: boolean) {
     this.showHulls = v;
     for (const e of this.objects.values()) e.mat?.setHullView(v);
@@ -394,6 +406,12 @@ export class ArenaView {
 
   private tick(dt: number) {
     for (const m of this.movers.values()) m.mixer?.update(dt);
+    for (const a of this.pushArrows) {
+      a.life -= dt;
+      a.obj.visible = a.life > 0;
+    }
+    for (const a of this.pushArrows.filter((x) => x.life <= 0)) this.stage.scene.remove(a.obj);
+    this.pushArrows = this.pushArrows.filter((x) => x.life > 0);
     for (const e of this.objects.values()) {
       if (e.mat && !e.mat.done) e.mat.update(dt);
       if (e.flash > 0) {

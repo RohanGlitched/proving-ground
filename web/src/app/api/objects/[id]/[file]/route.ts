@@ -20,14 +20,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; fi
     if (!f || !isId(id)) return json({ error: "Not found." }, 404);
     // input photos are only served once their object is published
     if (file === "input.jpg" && !(await store().get(`objects/${id}/meta.json`))) return json({ error: "Not found." }, 404);
-    const g = await store().get(f.key(id));
+    const g = await store().stream(f.key(id));
     if (!g) return json({ error: "Not found." }, 404);
-    return new Response(new Uint8Array(g.body), {
+    return new Response(g.body, {
       headers: {
         "content-type": f.type,
-        "content-length": String(g.body.length),
+        ...(g.size ? { "content-length": String(g.size) } : {}),
         "cache-control": "public, max-age=31536000, immutable",
-        etag: `"${g.generation}"`,
         "access-control-allow-origin": "*",
       },
     });

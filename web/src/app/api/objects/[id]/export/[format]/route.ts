@@ -12,15 +12,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; fo
     const { id, format } = await ctx.params;
     if (!isId(id) || !isExportFormat(format)) return json({ error: "Not found." }, 404);
     const s = store();
-    const g = await s.get(exportKey(id, format));
+    // streamed: a USDZ can be 6+ MB, over the 4.5 MB a buffered function response may carry
+    const g = await s.stream(exportKey(id, format));
     if (!g) return json({ error: "Not exported yet." }, 404);
     const meta = (await s.getJSON<{ slug?: string; name?: string }>(`objects/${id}/meta.json`))?.value;
     const base = (meta?.slug || meta?.name || id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || id;
     const f = EXPORT_FORMATS[format];
-    return new Response(new Uint8Array(g.body), {
+    return new Response(g.body, {
       headers: {
         "content-type": f.type,
-        "content-length": String(g.body.length),
+        ...(g.size ? { "content-length": String(g.size) } : {}),
         "content-disposition": `attachment; filename="${base}.${f.ext}"`,
         "cache-control": "public, max-age=31536000, immutable",
       },
