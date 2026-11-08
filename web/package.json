@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:sim": "node --import tsx --test tests/sim/"
+    "test:sim": "node --import tsx --test tests/sim/",
+    "test:pipeline": "node --import tsx --test tests/pipeline/",
+    "test:pipeline:live": "node --env-file=.env.local --import tsx --test tests/pipeline/live.test.mjs"
   },
   "dependencies": {
     "@gltf-transform/core": "4.5.1",
