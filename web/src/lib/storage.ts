@@ -257,6 +257,13 @@ export function gcsStore(bucket: string): Store {
   const base = `https://storage.googleapis.com/storage/v1/b/${b}/o`;
   const upload = `https://storage.googleapis.com/upload/storage/v1/b/${b}/o`;
   const auth = async () => ({ authorization: `Bearer ${await accessToken()}` });
+  // a cached token can expire early (gcloud tokens outlive our guess less often than we'd like): retry once on 401
+  const fetch = async (url: string, init: RequestInit = {}) => {
+    const r = await globalThis.fetch(url, init);
+    if (r.status !== 401) return r;
+    cachedToken = null;
+    return globalThis.fetch(url, { ...init, headers: { ...(init.headers as Record<string, string>), ...(await auth()) } });
+  };
 
   return withJSON({
     kind: "gcs",

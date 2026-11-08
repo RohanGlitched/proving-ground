@@ -454,7 +454,8 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       sim: simRef.current,
       library: () => library,
       placed: () => placed,
-      act: actions.current,
+      // read the latest actions at call time (each render makes new closures)
+      act: new Proxy({}, { get: (_t, k: string) => (actions.current as Record<string, unknown>)[k] }),
       header: () => headerRef.current,
     };
   }, [boot, library, placed]);
