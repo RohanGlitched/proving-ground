@@ -7,6 +7,7 @@
 Lux3D builds the object at its real size and splits it into the parts it is made of. Each part becomes a solid with mass in a MuJoCo physics world running in your browser, in front of Unitree's G1 humanoid running Unitree's own published walking controller. Build a course from your own things, run it ten times, and see what the robot tripped on.
 
 - **Try it:** https://proving-ground-snowy.vercel.app (no sign-up)
+- **Video (75 s):** https://youtu.be/6pRu4K838hk
 - **Arena:** https://proving-ground-snowy.vercel.app/arena
 - **Report (PDF):** [docs/proving-ground-report.pdf](docs/proving-ground-report.pdf)
 - **How it works, with every number we measured:** https://proving-ground-snowy.vercel.app/how

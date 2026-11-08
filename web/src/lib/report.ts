@@ -2,7 +2,7 @@
 export const REPORT = {
   site: "https://proving-ground-snowy.vercel.app",
   repo: "https://github.com/RohanGlitched/proving-ground",
-  video: "pending",
+  video: "https://youtu.be/6pRu4K838hk",
   who: [
     ["Robotics teams", "Varied, realistic test objects with real sizes and collision parts in 90 seconds, downloadable as MuJoCo-ready packs."],
     ["Anyone curious about robots", "Make something from your own life and watch a real controller deal with it. Share the course that beat it."],

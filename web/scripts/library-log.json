@@ -376,12 +376,68 @@
     },
     "wheelie-bin": {
       "jobId": "0t63orq912",
-      "status": "running",
+      "status": "done",
       "startedAt": "2026-11-08T21:03:02.015Z",
       "balanceBefore": 3115,
+      "version": "G1-Turbo",
+      "objectId": "0t63orq912",
+      "credits": 41,
+      "balanceAfter": 3043,
+      "measuredCredits": 72,
+      "seconds": 768,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 86,
+        "fetch-result": 11,
+        "upload-for-articulation": 7,
+        "articulate": 227,
+        "process": 5,
+        "publish": 0
+      },
+      "process": {
+        "parts": 6,
+        "tris": 20054,
+        "visualKB": 498,
+        "partsKB": 33
+      },
+      "finishedAt": "2026-11-08T21:15:50.232Z"
+    },
+    "skateboard": {
+      "jobId": "k6k9nr23bg",
+      "status": "done",
+      "startedAt": "2026-11-08T21:15:53.122Z",
+      "balanceBefore": 3043,
+      "version": "G1-Turbo",
+      "objectId": "k6k9nr23bg",
+      "credits": 43,
+      "balanceAfter": 3000,
+      "measuredCredits": 43,
+      "seconds": 213,
+      "stages": {
+        "upload-input": "skipped",
+        "generate": 87,
+        "fetch-result": 5,
+        "upload-for-split": 9,
+        "part-split": 85,
+        "process": 10,
+        "publish": 3
+      },
+      "process": {
+        "parts": 9,
+        "tris": 19770,
+        "visualKB": 462,
+        "partsKB": 41
+      },
+      "finishedAt": "2026-11-08T21:19:26.352Z"
+    },
+    "toolbox": {
+      "jobId": "yiaspu19x2",
+      "status": "running",
+      "startedAt": "2026-11-08T21:19:29.186Z",
+      "balanceBefore": 3000,
       "version": "G1-Turbo"
     }
   },
-  "totalCredits": 441,
+  "totalCredits": 556,
   "runs": []
 }

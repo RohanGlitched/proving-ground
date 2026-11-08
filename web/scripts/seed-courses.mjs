@@ -17,6 +17,7 @@ const COURSES = [
   { title: 'Garage', mode: 'blind', pushes: true, objects: [['car-tire', 1.5, 0.0, 0], ['toolbox', 2.4, -0.3, 0.6], ['bucket', 3.1, 0.3, 0]] },
 ];
 
+const existing = new Set(((await (await fetch(`${base}/api/courses?sort=new`)).json()).items ?? []).map((c) => c.title));
 const e = await makeEngine('/seed');
 async function physics(id) {
   const doc = await (await fetch(`${base}/api/objects/${id}/parts.json`)).json();
@@ -29,6 +30,7 @@ async function physics(id) {
 }
 
 for (const c of COURSES) {
+  if (existing.has(c.title)) { console.log(`skip "${c.title}": already in the gauntlet`); continue; }
   const objs = c.objects.map(([slug, x, y, yaw]) => ({ e: bySlug(slug), x, y, yaw })).filter((o) => o.e);
   if (objs.length < c.objects.length) { console.log(`skip "${c.title}": missing ${c.objects.length - objs.length} objects`); continue; }
   const sceneObjects = [];

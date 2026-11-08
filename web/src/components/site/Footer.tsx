@@ -46,6 +46,9 @@ export function Footer() {
             <li>Physics: MuJoCo by Google DeepMind, Apache-2.0, compiled to WebAssembly.</li>
             <li>Rendering: three.js, MIT.</li>
             <li>
+              Film: <a className="underline decoration-white/30 underline-offset-2 hover:text-target" href="https://youtu.be/6pRu4K838hk">youtu.be/6pRu4K838hk</a>
+            </li>
+            <li>
               Source: <a className="underline decoration-white/30 underline-offset-2 hover:text-target" href={REPO}>{REPO.replace("https://", "")}</a>
             </li>
           </ul>
