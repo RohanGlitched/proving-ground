@@ -24,3 +24,10 @@ export async function makeEngine(dir) {
 }
 
 export const sample = (name) => readFile(path.join(WEB, 'dev-samples', name));
+
+/** Axis-aligned box as 8 corner points (object frame, Z up, origin at the box centre). */
+export function boxPart(sx, sy, sz) {
+  const p = [];
+  for (const x of [-sx / 2, sx / 2]) for (const y of [-sy / 2, sy / 2]) for (const z of [-sz / 2, sz / 2]) p.push(x, y, z);
+  return { points: Float32Array.from(p) };
+}
