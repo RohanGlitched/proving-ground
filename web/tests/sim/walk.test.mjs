@@ -27,3 +27,15 @@ test('robot stands still on a zero command and stays up for 5 s', async () => {
   assert.ok(Math.hypot(e.data.qpos[0], e.data.qpos[1]) < 0.3);
   e.dispose();
 });
+
+test('a steered robot reaches the flag (Steer challenges need it)', async () => {
+  const e = await makeEngine('/t_steer_goal');
+  e.reset({ noise: 'gate' });
+  e.setGoal(1.5, 0);
+  e.setMode('manual');
+  e.setCommand({ vx: 0.5, vy: 0, yaw: 0 });
+  e.step(3000);
+  assert.equal(e.status, 'goal');
+  assert.ok(e.goalAt > 1 && e.goalAt < 6, `reached at ${e.goalAt}`);
+  e.dispose();
+});

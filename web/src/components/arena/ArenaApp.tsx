@@ -253,6 +253,7 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
           const loaded = course.objects.map((o) => ({ uid: newUid(), objectId: o.objectId, name: o.name, x: o.x, y: o.y, yaw: o.yaw, density: o.density, kind: o.kind }));
           setPlaced(loaded);
           baseline.current = loaded;
+          baselineGoal.current = course.goal;
           if (challenge) {
             setMode(challengeMode!);
             setPushes(false);
@@ -397,8 +398,12 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
   }, [placed, goal, mode, pushes]);
 
   // steer mode: the camera rides along with the robot
+  const wasManual = useRef(false);
   useEffect(() => {
-    if (viewRef.current) viewRef.current.chase = mode === "manual";
+    if (!viewRef.current) return;
+    viewRef.current.chase = mode === "manual";
+    if (wasManual.current && mode !== "manual") viewRef.current.recenter();
+    wasManual.current = mode === "manual";
   }, [mode, boot]);
 
   // ---- manual steering ----
@@ -492,6 +497,7 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
 
   // ---- challenges: a goal, a limit and a score (see lib/challenges.ts) ----
   const baseline = useRef<Placed[] | null>(null);
+  const baselineGoal = useRef<{ x: number; y: number } | null>(null);
   const onGoal = useRef<((t: number) => void) | null>(null);
   const [cleared, setCleared] = useState<{ score: number; best: boolean } | null>(null);
   const [verdictMsg, setVerdictMsg] = useState<string | null>(null);
@@ -504,25 +510,51 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
       return !p || Math.hypot(p.x - o.x, p.y - o.y) > 0.05 || Math.abs(p.yaw - o.yaw) > 0.1;
     }).length;
     const ids = new Set(b.map((o) => o.uid));
-    return changed + placed.filter((p) => !ids.has(p.uid)).length;
-  }, [placed]);
+    // the flag counts too: a challenge is won where its course puts the goal
+    const g = baselineGoal.current;
+    const flag = g && Math.hypot(goal.x - g.x, goal.y - g.y) > 0.05 ? 1 : 0;
+    return changed + placed.filter((p) => !ids.has(p.uid)).length + flag;
+  }, [placed, goal]);
   useEffect(() => {
     setCleared(null);
     setVerdictMsg(null);
   }, [placed]);
+  const [selMass, setSelMass] = useState<number | null>(null);
+  const [courseMass, setCourseMass] = useState<number | null>(null);
+  const massOf = useCallback(
+    async (p: Placed) => {
+      const ph = await physics(p.objectId);
+      const density = (challenge ? undefined : p.density) ?? defaultDensity(byId.get(p.objectId));
+      return Math.min(80, Math.max(0.05, (ph.volume ?? 0) * density));
+    },
+    [physics, byId, challenge],
+  );
+  useEffect(() => {
+    let live = true;
+    const sel = placed.find((p) => p.uid === selected);
+    if (sel) massOf(sel).then((m) => live && setSelMass(m)).catch(() => {});
+    else setSelMass(null);
+    if (challenge?.kind === "trip") Promise.all(placed.map(massOf)).then((ms) => live && setCourseMass(ms.reduce((a, b) => a + b, 0))).catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [placed, selected, massOf, challenge]);
   async function totalMass() {
     let kg = 0;
     for (const p of placed) {
       const ph = await physics(p.objectId);
-      const density = p.density ?? defaultDensity(byId.get(p.objectId));
+      const density = (challenge ? undefined : p.density) ?? defaultDensity(byId.get(p.objectId));
       kg += Math.min(80, Math.max(0.05, (ph.volume ?? 0) * density));
     }
     return kg;
   }
+  const [stampUp, setStampUp] = useState(false);
   function clear(score: number) {
     if (!challenge) return;
     const best = recordBest(challenge.id, score);
     setCleared({ score, best });
+    setStampUp(true);
+    setTimeout(() => setStampUp(false), 2800);
     setVerdictMsg(null);
     chime();
     say(`Challenge cleared: ${scoreLabel(challenge, score)}${best ? " (your best)" : ""}`, "pass");
@@ -548,6 +580,11 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
       : null;
   function resetCourse() {
     if (baseline.current) setPlaced(baseline.current.map((p) => ({ ...p })));
+    const g = baselineGoal.current;
+    if (g) {
+      setGoal(g);
+      viewRef.current?.setGoal(g.x, g.y);
+    }
     setTrials(null);
     reset();
   }
@@ -813,6 +850,7 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
                   {challenge.kind === "trip" && (
                     <span>
                       Objects {placed.length} of {challenge.maxObjects}
+                      {courseMass != null && placed.length > 0 ? ` · ${courseMass < 1 ? `${Math.round(courseMass * 1000)} g` : `${courseMass.toFixed(1)} kg`}` : ""}
                     </span>
                   )}
                   {challenge.kind === "steer" && <span>Steer with WASD, the arrows or the pad</span>}
@@ -820,6 +858,12 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
                   {challenge.par && <span>Par {challenge.par}</span>}
                 </div>
                 {verdictMsg && <div className="mt-1.5 text-[12.5px] text-[#ffb4ad]">{verdictMsg}</div>}
+                {cleared && (
+                  <div className="mt-1.5 text-[12.5px] font-semibold text-[#8be0b0]">
+                    Cleared: {scoreLabel(challenge, cleared.score)}
+                    {cleared.best ? " (your best)" : ""}
+                  </div>
+                )}
                 {challenge.kind !== "trip" && moves > 0 && (
                   <button onClick={resetCourse} className="mt-1.5 text-[12px] font-semibold text-white underline underline-offset-2">
                     Reset course
@@ -827,7 +871,7 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
                 )}
               </div>
             )}
-            {cleared && challenge && (
+            {cleared && challenge && stampUp && (
               <div className="pointer-events-none absolute inset-x-0 top-[38%] flex justify-center">
                 <Stamp tone="pass" animate rotate={-6} onDark className="!px-4 !py-2 text-[22px] sm:text-[28px]">
                   Cleared · {scoreLabel(challenge, cleared.score)}
@@ -978,14 +1022,27 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
                   <dt className="text-ink-3">Made from</dt>
                   <dd>{selEntry?.source === "photo" ? "a photo" : selEntry?.source === "text" ? "a sentence" : "the library"}</dd>
                 </dl>
-                <label className="mt-3 block text-[13px]">
-                  <span className="flex justify-between text-ink-3">
-                    <span>Density</span>
-                    <span className="tnum text-ink">{sel.density ?? defaultDensity(byId.get(sel.objectId))} kg/m³</span>
-                  </span>
-                  <input type="range" min={60} max={2400} step={20} value={sel.density ?? defaultDensity(byId.get(sel.objectId))} onChange={(e) => updateSel({ density: +e.target.value })} className="mt-1 w-full accent-[#141517]" />
-                  <span className="text-[11.5px] text-ink-3">Foam 60 · wood 600 · water 1000 · rock 2400</span>
-                </label>
+                {selMass != null && (
+                  <div className="mt-2 flex justify-between text-[13px]">
+                    <span className="text-ink-3">Mass</span>
+                    <span className="tnum">{selMass < 1 ? `${Math.round(selMass * 1000)} g` : `${selMass.toFixed(1)} kg`}</span>
+                  </div>
+                )}
+                {challenge ? (
+                  <div className="mt-2 flex justify-between text-[13px]">
+                    <span className="text-ink-3">Density (fixed in challenges)</span>
+                    <span className="tnum">{defaultDensity(byId.get(sel.objectId))} kg/m³</span>
+                  </div>
+                ) : (
+                  <label className="mt-3 block text-[13px]">
+                    <span className="flex justify-between text-ink-3">
+                      <span>Density</span>
+                      <span className="tnum text-ink">{sel.density ?? defaultDensity(byId.get(sel.objectId))} kg/m³</span>
+                    </span>
+                    <input type="range" min={60} max={2400} step={20} value={sel.density ?? defaultDensity(byId.get(sel.objectId))} onChange={(e) => updateSel({ density: +e.target.value })} className="mt-1 w-full accent-[#141517]" />
+                    <span className="text-[11.5px] text-ink-3">Foam 60 · wood 600 · water 1000 · rock 2400</span>
+                  </label>
+                )}
                 <div className="mt-3 flex gap-2">
                   <button onClick={() => updateSel({ yaw: sel.yaw - Math.PI / 8 })} className="h-9 flex-1 rounded-[8px] border border-ink/15 text-[13px] font-semibold hover:bg-ink/5">
                     Turn left

@@ -538,7 +538,7 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
           this.status = 'fell';
           this.fellAt = this.robotStep * DT - DT;
           this.tgt = DEFAULT_ANGLES.slice(); // go stiff; the policy stops
-        } else if (this.status === 'running' && Math.hypot(qpos[0] - this.goal.x, qpos[1] - this.goal.y) < GOAL_RADIUS && this.mode !== 'manual') {
+        } else if (this.status === 'running' && Math.hypot(qpos[0] - this.goal.x, qpos[1] - this.goal.y) < GOAL_RADIUS) {
           this.status = 'goal';
           this.goalAt = this.robotStep * DT;
         }
