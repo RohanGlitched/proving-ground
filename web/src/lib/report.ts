@@ -1,5 +1,5 @@
 // Report content. Every number is measured in this repo (probe/, tests, trial runs, job records); see /how.
-// BEGIN GENERATED (scratchpad rep/gen-data.py, from the stored job records, Nov 9, 2026 7:18 IST)
+// BEGIN GENERATED (scratchpad rep/gen-data.py, from the stored job records, Nov 9, 2026 7:28 IST)
 const GENERATED = {
   gen: {"min": 79, "max": 147, "median": 89, "n": 66},
   rawTris: [["kitchen-chair", 17936], ["traffic-cone", 18210], ["park-bench", 19294], ["cardboard-box", 17188], ["car-tire", 14376], ["basketball", 18628], ["laundry-basket", 16592], ["potted-plant", 24540], ["office-chair", 23836], ["door", 20476], ["a-stack-of-three-old-car", 17450], ["garden-gate", 16360], ["old-rucksack", 20560], ["wheelie-bin", 20054], ["skateboard", 19770], ["toolbox", 20418], ["watermelon", 18068], ["stack-of-books", 18098], ["bar-stool", 18016], ["floor-lamp", 32108], ["side-table", 18130], ["bean-bag", 18010], ["rolled-rug", 19146], ["folding-chair", 13446], ["step-stool", 18786], ["coat-rack", 18684], ["standing-fan", 29504], ["ottoman", 17114], ["toy-truck", 24624], ["teddy-bear", 17280], ["block-pile", 15804], ["rocking-horse", 20770], ["toy-train", 25442], ["football", 16364], ["hurdle", 24450], ["kettlebell", 18166], ["yoga-ball", 18136], ["agility-ladder", 19528], ["rock", 18286], ["log", 17782], ["fire-hydrant", 19338], ["trash-can", 22344], ["mailbox", 30030], ["bollard", 34860], ["garden-gnome", 19472], ["wheelbarrow", 18116], ["shopping-cart", 30624], ["wooden-pallet", 15356], ["sawhorse", 17578], ["barrel", 18916], ["cinder-block", 15584], ["sandbag", 21044], ["bicycle", 24458], ["pumpkin", 17750], ["pineapple", 27666], ["pizza-boxes", 13404], ["suitcase", 19878], ["guitar-case", 18924], ["robot-vacuum", 15312], ["banana-peel", 18048], ["bucket", 16430], ["ladder", 23438], ["cat-bed", 18258], ["umbrella", 32366], ["dog-house", 10804]] as [string, number][],
@@ -46,7 +46,7 @@ export const REPORT = {
     ["Rig a person", "animations/rig", "15", "~63 s"],
     ["Make them walk", "animations/retarget · Walk_Loop", "6", "~120 s"],
     ["Hinges for doors and gates", "articulation · URDF", "28", "~3 min"],
-    ["STL / OBJ / FBX download", "multi-format-export", "0", "~30 s"],
+    ["STL / OBJ / FBX download", "multi-format-export", "1", "~30 s"],
     ["Price every job first", "pricing/openapi-quotes", "0", "<1 s"],
   ] as string[][],
   pipelineNotes: [

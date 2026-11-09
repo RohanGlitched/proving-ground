@@ -18,21 +18,9 @@ async function rate(objs, seed) {
   const s = e.runTrials({ scene: { objects, goal: { x: 4.5, y: 0 }, start: { x: 0, y: 0, yaw: 0 } }, n: 10, seed, mode: 'blind', maxSeconds: 20 });
   return s.trials.filter((t) => t.result === 'goal').length;
 }
-const C = {
-  moving: [['cardboard-box', 1.4, 0.05, 0.2], ['suitcase', 2.3, -0.2, 1.4], ['cardboard-box', 3.1, 0.15, 0.9]],
-};
-const all3 = [['cinder-block', 1.4, 0.9, 0.3], ['sandbag', 2.3, -0.95, 1.5], ['cinder-block', 3.2, 1.0, 1.1]];
-console.log('building all moved', await rate(all3, 5), await rate(all3, 77));
-const rot = [['cinder-block', 1.4, 0.0, 0.3], ['sandbag', 2.3, -0.05, 0.0], ['cinder-block', 3.2, 0.1, 1.1]];
-console.log('building sandbag turned along the path', await rate(rot, 5), await rate(rot, 77));
-for (const [name, objs] of Object.entries(C)) {
-  console.log(name, 'as is', await rate(objs, 5), await rate(objs, 77));
-  for (let i = 0; i < objs.length; i++) {
-    const m = objs.map((o, k) => (k === i ? [o[0], o[1], o[2] + 0.9, o[3]] : o));
-    console.log(`  move ${objs[i][0]}#${i}:`, await rate(m, 5), await rate(m, 77));
-    for (let j = i + 1; j < objs.length; j++) {
-      const m2 = m.map((o, k) => (k === j ? [o[0], o[1], o[2] - 0.9, o[3]] : o));
-      console.log(`    + ${objs[j][0]}#${j}:`, await rate(m2, 5), await rate(m2, 77));
-    }
-  }
-}
+const M = [['cardboard-box', 1.4, 0.05, 0.2], ['suitcase', 2.3, -0.2, 1.4], ['cardboard-box', 3.1, 0.15, 0.9]];
+const T = [['teddy-bear', 1.4, 0.1, 0.4], ['toy-truck', 2.2, -0.15, 1.2], ['block-pile', 2.9, 0.1, 0], ['toy-train', 3.6, -0.1, 0.3]];
+const mv = (o, k, dy) => o.map((q, i) => (i === k ? [q[0], q[1], q[2] + dy, q[3]] : q));
+const S1 = 673365, S2 = 962290;
+console.log('moving day as is', await rate(M, S1), '| box0+suitcase', await rate(mv(mv(M, 0, 0.9), 1, -0.9), S1), '| box0+box2', await rate(mv(mv(M, 0, 0.9), 2, -0.9), S1), '| box0 only', await rate(mv(M, 0, 0.9), S1));
+console.log('toddler as is', await rate(T, S2), '| block pile', await rate(mv(T, 2, 0.9), S2), '| truck', await rate(mv(T, 1, 0.9), S2));

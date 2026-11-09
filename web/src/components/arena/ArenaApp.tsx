@@ -74,6 +74,8 @@ const newUid = () => `o${Date.now().toString(36)}${(uidN++).toString(36)}`;
 
 export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?: string; openMake?: boolean; addId?: string; challengeId?: string }) {
   const challenge: Challenge | null = challengeById(challengeId);
+  // a challenge is played in one mode only: blind for fix and trip, steering for steer
+  const challengeMode: Mode | null = challenge ? (challenge.kind === "steer" ? "manual" : "blind") : null;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<ArenaView | null>(null);
   const simRef = useRef<ArenaSim | null>(null);
@@ -252,7 +254,8 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
           setPlaced(loaded);
           baseline.current = loaded;
           if (challenge) {
-            setMode(challenge.kind === "steer" ? "manual" : "blind");
+            setMode(challengeMode!);
+            setPushes(false);
             say(`Challenge: ${challenge.title}. ${challenge.brief}`);
           } else say(`Loaded "${course.title}"`);
         })
@@ -526,6 +529,7 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
   }
   async function judge(summary: TrialSummary) {
     if (!challenge || challenge.kind === "steer") return;
+    if (mode !== "blind" || pushes) return setVerdictMsg("Challenges count blind walks without shoves only.");
     const passes = summary.trials.filter((t) => t.result === "goal").length;
     const falls = summary.trials.filter((t) => t.result === "fell").length;
     if (challenge.kind === "fix") {
@@ -538,7 +542,10 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
     if (falls < (challenge.target ?? 7)) return setVerdictMsg(`It fell in ${falls} of 10 runs; ${challenge.target} needed.`);
     return clear(Math.round((await totalMass()) * 100) / 100);
   }
-  onGoal.current = challenge?.kind === "steer" && mode === "manual" ? (t: number) => clear(Math.round(t * 10) / 10) : null;
+  onGoal.current =
+    challenge?.kind === "steer" && mode === "manual"
+      ? (t: number) => (moves === 0 ? clear(Math.round(t * 10) / 10) : setVerdictMsg("The course was changed, so this run does not count. Press Reset course and steer it as it is."))
+      : null;
   function resetCourse() {
     if (baseline.current) setPlaced(baseline.current.map((p) => ({ ...p })));
     setTrials(null);
@@ -552,7 +559,8 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
     setTrials(null);
     setTrialProgress(0);
     viewRef.current?.clearTrials();
-    const seed = Math.floor(Math.random() * 1e6);
+    // a challenge uses its own fixed seed: the same layout always gives the same ten runs
+    const seed = challenge ? [...challenge.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 1_000_003, 7) : Math.floor(Math.random() * 1e6);
     try {
       // draw each run's trail the moment it finishes
       const sofar: NonNullable<typeof trials>["trials"] = [];
@@ -718,7 +726,9 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
               ["planner", "Planner"],
               ["manual", "Steer"],
             ] as [Mode, string][]
-          ).map(([m, label]) => (
+          )
+            .filter(([m]) => !challenge || m === challengeMode)
+            .map(([m, label]) => (
             <button
               key={m}
               role="radio"
@@ -810,7 +820,7 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
                   {challenge.par && <span>Par {challenge.par}</span>}
                 </div>
                 {verdictMsg && <div className="mt-1.5 text-[12.5px] text-[#ffb4ad]">{verdictMsg}</div>}
-                {challenge.kind === "fix" && moves > 0 && (
+                {challenge.kind !== "trip" && moves > 0 && (
                   <button onClick={resetCourse} className="mt-1.5 text-[12px] font-semibold text-white underline underline-offset-2">
                     Reset course
                   </button>
@@ -1003,10 +1013,12 @@ export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?
               />
               Show what the robot feels (collision hulls)
             </label>
-            <label className="flex items-center gap-2 text-[13.5px]">
-              <input type="checkbox" checked={pushes} onChange={(e) => setPushes(e.target.checked)} className="h-4 w-4 accent-[#141517]" />
-              Shove the robot once per trial (170 N)
-            </label>
+            {!challenge && (
+              <label className="flex items-center gap-2 text-[13.5px]">
+                <input type="checkbox" checked={pushes} onChange={(e) => setPushes(e.target.checked)} className="h-4 w-4 accent-[#141517]" />
+                Shove the robot once per trial (170 N)
+              </label>
+            )}
 
             <ResultsSheet
               summary={trials}
