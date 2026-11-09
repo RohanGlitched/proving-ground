@@ -49,9 +49,9 @@ export function HeroArena() {
             <Link href="/arena" className="inline-flex h-11 items-center rounded-[10px] border border-white/25 px-5 font-semibold text-white hover:bg-white/10">
               Open the arena
             </Link>
-            <a href="https://youtu.be/6pRu4K838hk" target="_blank" rel="noreferrer" className="inline-flex h-11 items-center gap-2 rounded-[10px] px-3 font-semibold text-white/85 hover:text-white">
+            <a href="https://youtu.be/bBHqWoWENqU" target="_blank" rel="noreferrer" className="inline-flex h-11 items-center gap-2 rounded-[10px] px-3 font-semibold text-white/85 hover:text-white">
               <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full border border-white/40 text-[10px]">▶</span>
-              Watch the 75-second film
+              Watch the film (1 min 44 s)
             </a>
           </div>
         </div>
