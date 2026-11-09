@@ -12,7 +12,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: r.course.title, description, openGraph: { title: `${r.course.title} · Proving Ground`, description }, twitter: { card: "summary_large_image", title: r.course.title, description } };
 }
 
-export default async function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CoursePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ challenge?: string }> }) {
   const { id } = await params;
-  return <ArenaApp courseId={id} />;
+  const { challenge } = await searchParams;
+  return <ArenaApp courseId={id} challengeId={challenge} />;
 }

@@ -6,6 +6,7 @@ import { Stamp } from "@/components/ui/marks";
 import { getLibrary, getPhysics, type LibraryEntry } from "@/lib/client/api";
 import { hull2d } from "@/sim/hull";
 import type { SceneSpec, TrialResult } from "@/sim/types";
+import { defaultDensity } from "@/lib/density";
 
 const GOAL = { x: 4.2, y: 0 };
 const SLOTS = [
@@ -47,7 +48,7 @@ export function TrialWall() {
           }
           for (const e of items) if (chosen.length < 3 && !chosen.includes(e)) chosen.push(e);
           const phys = await Promise.all(chosen.map((e) => getPhysics(e.id)));
-          const objects = chosen.map((e, i) => ({ id: `t${i}`, name: e.name, parts: phys[i].parts, ...SLOTS[i], mass: phys[i].volume ? phys[i].volume! * 400 : undefined }));
+          const objects = chosen.map((e, i) => ({ id: `t${i}`, name: e.name, parts: phys[i].parts, ...SLOTS[i], mass: phys[i].volume ? phys[i].volume! * defaultDensity(e) : undefined }));
           const feet: Foot[] = objects.map((o) => {
             const xy: number[] = [];
             const c = Math.cos(o.yaw), s = Math.sin(o.yaw);
@@ -234,7 +235,7 @@ export function TrialWall() {
             <span className="data text-[10px] text-ink-3">RUN {String(i + 1).padStart(2, "0")}</span>
             {r ? (
               <Stamp tone={r.result === "goal" ? "pass" : r.result === "fell" ? "fault" : "ink"} animate rotate={i % 2 ? -5 : 4} className="!px-1 !text-[10.5px]">
-                {r.result === "goal" ? "pass" : r.result === "fell" ? "fell" : "time"}
+                {r.result === "goal" ? "pass" : r.result === "fell" ? "fell" : "stuck"}
               </Stamp>
             ) : (
               <span className="mt-1 h-2 w-2 animate-pulse rounded-full bg-ink/20" />

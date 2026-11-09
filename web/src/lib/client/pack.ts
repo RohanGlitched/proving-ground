@@ -13,12 +13,12 @@ export async function buildPack(e: LibraryEntry, density = defaultDensity(e)) {
   ]);
   const parts = phys.parts;
   // the same mass the arena uses: closed mesh volume × density (hull volume overstates hollow shapes)
-  const mj = toMJCF({ name: e.slug ?? e.name, parts, density, mass: phys.volume ? phys.volume * density : undefined });
+  const mj = toMJCF({ name: e.slug ?? e.name, parts, density, mass: phys.volume ? phys.volume * density : undefined, joints: phys.joints });
   const readme = `${e.name}
 Made with Aholo Lux3D in Proving Ground.
 
 visual.glb   textured mesh, metres, Y-up (glTF convention)
-object.xml   MuJoCo include: a free body with ${parts.length} convex mesh geoms, ${mj.mass.toFixed(2)} kg total
+object.xml   MuJoCo include: ${phys.joints?.length ? `a fixed base with ${phys.joints.length} moving part${phys.joints.length === 1 ? "" : "s"} on Lux3D's joints (hinge or slide, with limits)` : `a free body with ${parts.length} convex mesh geoms`}, ${mj.mass.toFixed(2)} kg total
              (density ${density} kg/m^3 over the closed mesh volume), Z-up, no floor. Add it to your own
              scene with <include file="object.xml"/>.
 scene.xml    a floor plus the object: mujoco.MjModel.from_xml_path("scene.xml")

@@ -21,7 +21,7 @@ Built for the Manycore Aholo Global 3D AI Hackathon (November 2026).
 | **Make** | Type a sentence, upload a photo, or scan the arena's QR code and snap something with your phone. Lux3D generates it in about 90 seconds; split into parts and ready to walk into in about 4 minutes. |
 | **Watch it materialize** | Points condense into the shape, the texture sweeps in, part-split pulls it into pieces, each piece is wrapped in the convex hull the physics will feel, and it drops in front of the robot. |
 | **Walk** | Blind walk (the controller only feels its joints), planner (an A* path around the object footprints) or steer it yourself. |
-| **Test** | Ten seeded trials: the robot starts a little off-line, objects shift, optional shoves. Pass rate, falls, and what it tripped on. |
+| **Test** | Ten seeded trials: the robot starts a little off-line and turned a few degrees, optional shoves. Pass rate, falls, and what it tripped on. |
 | **Share** | Save a course, send the link, climb the gauntlet: courses ranked by how often the robot fails them. |
 | **Take it home** | Every object downloads as a robot-ready pack: textured GLB, one STL hull per part, and an MJCF body with masses. |
 

@@ -5,8 +5,8 @@ import { CameraFrame } from "@/components/ui/CameraFrame";
 import { Stamp, Target } from "@/components/ui/marks";
 import { chime, thud, unlockAudio, whoosh } from "@/lib/client/sfx";
 import { defaultDensity } from "@/lib/density";
+import { challengeById, recordBest, bestOf, scoreLabel, type Challenge } from "@/lib/challenges";
 import { MakePanel } from "./MakePanel";
-import { tripIndex } from "@/lib/client/trips";
 import { LibraryDrawer, sizeLabel } from "./LibraryDrawer";
 import { ResultsSheet } from "./ResultsSheet";
 import { createArenaSim, type ArenaSim, type FrameHeader } from "./simAdapter";
@@ -39,9 +39,10 @@ type LogLine = { t: number; text: string; tone: "fault" | "pass" | "ink" };
 
 const DEFAULT_GOAL = { x: 4.5, y: 0 };
 const SHOVE_N = 170;
+const DRAFT_KEY = "pg-arena-draft-v1";
 const DEFAULT_START = { x: 0, y: 0, yaw: 0 };
 // slugs of library objects used for the first course a visitor sees
-const STARTER = ["traffic-cone", "cardboard-box", "kitchen-chair", "car-tire", "basketball"];
+const STARTER = ["cardboard-box", "kitchen-chair", "traffic-cone", "car-tire", "basketball"];
 
 /** The most open spot between start and goal, close to the walking line: new objects never land on the flag or each other. */
 function freeSpot(placed: { x: number; y: number; r?: number }[], goal: { x: number; y: number }, start: { x: number; y: number }, r = 0.3) {
@@ -71,7 +72,8 @@ const radiusOf = (e?: { size: [number, number, number] }) => (e ? Math.hypot(e.s
 let uidN = 0;
 const newUid = () => `o${Date.now().toString(36)}${(uidN++).toString(36)}`;
 
-export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; openMake?: boolean; addId?: string }) {
+export function ArenaApp({ courseId, openMake, addId, challengeId }: { courseId?: string; openMake?: boolean; addId?: string; challengeId?: string }) {
+  const challenge: Challenge | null = challengeById(challengeId);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<ArenaView | null>(null);
   const simRef = useRef<ArenaSim | null>(null);
@@ -93,6 +95,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   runningRef.current = running;
   const [stuck, setStuck] = useState(false);
   const progress = useRef<{ t: number; x: number; y: number } | null>(null);
+  const lastTouched = useRef<string | null>(null); // name of the last thing the robot touched (for Share this fail)
   const [status, setStatus] = useState<FrameHeader["status"]>("running");
   const [selected, setSelected] = useState<string | null>(null);
   const [log, setLog] = useState<LogLine[]>([]);
@@ -157,6 +160,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
         offContact = sim.onContact((c: ContactEvent) => {
           const uid = c.entityId;
           view.flashContact(uid);
+          lastTouched.current = c.entityName;
           // one line per object per second of sim time, not one per contact
           const prev = lastSaid.get(uid);
           if (prev != null && c.t - prev < 1 && c.t >= prev) return;
@@ -198,7 +202,8 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       // stuck: running, but less than 15 cm of progress in 5 s of sim time (leaning on a bench, say)
       if (h.status === "running" && runningRef.current && modeRef.current !== "manual") {
         const pr = progress.current;
-        if (!pr || h.t < pr.t || Math.hypot(h.pelvis[0] - pr.x, h.pelvis[1] - pr.y) > 0.15) progress.current = { t: h.t, x: h.pelvis[0], y: h.pelvis[1] };
+        // waiting for a walker to cross is not being stuck
+        if (!pr || h.yielding || h.t < pr.t || Math.hypot(h.pelvis[0] - pr.x, h.pelvis[1] - pr.y) > 0.15) progress.current = { t: h.t, x: h.pelvis[0], y: h.pelvis[1] };
         else if (h.t - pr.t > 5) {
           progress.current = null;
           simRef.current?.pause();
@@ -219,6 +224,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
         if (h.status === "goal") {
           say(`Reached the goal in ${h.t.toFixed(2)} s`, "pass");
           chime();
+          onGoal.current?.(h.t);
         }
         prevStatus.current = h.status;
         setStatus(h.status);
@@ -242,8 +248,13 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
           viewRef.current?.setGoal(course.goal.x, course.goal.y);
           setMode(course.mode);
           setPushes(!!course.pushes);
-          setPlaced(course.objects.map((o) => ({ uid: newUid(), objectId: o.objectId, name: o.name, x: o.x, y: o.y, yaw: o.yaw, density: o.density, kind: o.kind })));
-          say(`Loaded "${course.title}"`);
+          const loaded = course.objects.map((o) => ({ uid: newUid(), objectId: o.objectId, name: o.name, x: o.x, y: o.y, yaw: o.yaw, density: o.density, kind: o.kind }));
+          setPlaced(loaded);
+          baseline.current = loaded;
+          if (challenge) {
+            setMode(challenge.kind === "steer" ? "manual" : "blind");
+            say(`Challenge: ${challenge.title}. ${challenge.brief}`);
+          } else say(`Loaded "${course.title}"`);
         })
         .catch(() => {
           say("That course link does not exist (or was removed). Here is the starter course instead.", "fault");
@@ -256,18 +267,32 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     }
     if (libLoading) return;
     seeded.current = true;
-    // the first course should be a real test: objects the trip test says trip or block the robot,
-    // right in the foot path, plus a walking person when the library has one
-    tripIndex().then((trips) => {
-      const objects = library.filter((e) => e.kind === "object");
-      // prefer things that make it fall over things that just block it, and nothing furniture-sized
-      const score = (e: LibraryEntry) => {
-        const t = trips[e.id];
-        return t ? t.falls * 3 + t.timeouts * 0.3 - t.passes * 0.2 : -100;
-      };
-      const ranked = objects.filter((e) => radiusOf(e) < 0.6).sort((a, b) => score(b) - score(a));
+    if (challenge?.kind === "trip") {
+      setMode("blind");
+      setPlaced([]);
+      baseline.current = [];
+      say(`Challenge: ${challenge.title}. Add up to ${challenge.maxObjects} objects from the library, then run 10 trials.`);
+      return;
+    }
+    // your own last course in this browser comes back after a reload (not when a link asks for something specific)
+    if (!addId) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "null") as { placed: Placed[]; goal: { x: number; y: number } } | null;
+        const ok = saved?.placed?.length && saved.placed.every((p) => byId.has(p.objectId));
+        if (ok) {
+          setPlaced(saved!.placed.map((p) => ({ ...p, uid: newUid() })));
+          setGoal(saved!.goal);
+          viewRef.current?.setGoal(saved!.goal.x, saved!.goal.y);
+          say("Restored your last course from this browser. Remove everything to start fresh.");
+          return;
+        }
+      } catch {}
+    }
+    // the first course is fixed (the one the report and the film describe): a cardboard box and a kitchen chair in
+    // the foot path, plus a walking person
+    Promise.resolve().then(() => {
       const pick = STARTER.map((s) => library.find((e) => e.slug === s)).filter(Boolean) as LibraryEntry[];
-      let chosen = (ranked.length >= 2 ? ranked : pick).slice(0, 2);
+      let chosen = pick.slice(0, 2);
       const added = addId ? library.find((e) => e.id === addId) : undefined;
       const extra = added && added.kind !== "pedestrian" ? added : undefined;
       if (extra) chosen = [extra, ...chosen.filter((e) => e.id !== extra.id)].slice(0, 2);
@@ -283,6 +308,15 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       setPlaced(next);
     });
   }, [boot, courseId, courseFailed, libLoading, library, say, addId]);
+
+  // keep a draft of your own course (not shared courses or challenges) so a reload does not lose it
+  useEffect(() => {
+    if (courseId || challenge || !seeded.current) return;
+    try {
+      if (placed.length) localStorage.setItem(DRAFT_KEY, JSON.stringify({ placed: placed.map(({ uid: _u, ...p }) => p), goal }));
+      else localStorage.removeItem(DRAFT_KEY);
+    } catch {}
+  }, [placed, goal, courseId, challenge]);
 
   // ---- keep the view and the physics scene in sync with placements ----
   const physics = useCallback((objectId: string) => getPhysics(objectId), []);
@@ -442,6 +476,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     setRunning(false);
   }
   function reset() {
+    viewRef.current?.recenter();
     simRef.current?.reset();
     simRef.current?.pause();
     setRunning(false);
@@ -450,6 +485,64 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     setStatus("running");
     prevStatus.current = "running";
     setLog([]);
+  }
+
+  // ---- challenges: a goal, a limit and a score (see lib/challenges.ts) ----
+  const baseline = useRef<Placed[] | null>(null);
+  const onGoal = useRef<((t: number) => void) | null>(null);
+  const [cleared, setCleared] = useState<{ score: number; best: boolean } | null>(null);
+  const [verdictMsg, setVerdictMsg] = useState<string | null>(null);
+  const moves = useMemo(() => {
+    const b = baseline.current;
+    if (!b) return 0;
+    const now = new Map(placed.map((p) => [p.uid, p]));
+    const changed = b.filter((o) => {
+      const p = now.get(o.uid);
+      return !p || Math.hypot(p.x - o.x, p.y - o.y) > 0.05 || Math.abs(p.yaw - o.yaw) > 0.1;
+    }).length;
+    const ids = new Set(b.map((o) => o.uid));
+    return changed + placed.filter((p) => !ids.has(p.uid)).length;
+  }, [placed]);
+  useEffect(() => {
+    setCleared(null);
+    setVerdictMsg(null);
+  }, [placed]);
+  async function totalMass() {
+    let kg = 0;
+    for (const p of placed) {
+      const ph = await physics(p.objectId);
+      const density = p.density ?? defaultDensity(byId.get(p.objectId));
+      kg += Math.min(80, Math.max(0.05, (ph.volume ?? 0) * density));
+    }
+    return kg;
+  }
+  function clear(score: number) {
+    if (!challenge) return;
+    const best = recordBest(challenge.id, score);
+    setCleared({ score, best });
+    setVerdictMsg(null);
+    chime();
+    say(`Challenge cleared: ${scoreLabel(challenge, score)}${best ? " (your best)" : ""}`, "pass");
+  }
+  async function judge(summary: TrialSummary) {
+    if (!challenge || challenge.kind === "steer") return;
+    const passes = summary.trials.filter((t) => t.result === "goal").length;
+    const falls = summary.trials.filter((t) => t.result === "fell").length;
+    if (challenge.kind === "fix") {
+      if (moves > (challenge.maxMoves ?? 0)) return setVerdictMsg(`You changed ${moves} objects; the limit is ${challenge.maxMoves}. Press Reset course to start over.`);
+      if (passes < (challenge.target ?? 10)) return setVerdictMsg(`${passes} of 10 got through; ${challenge.target} needed. Try moving something else.`);
+      return clear(moves);
+    }
+    const n = placed.length;
+    if (n > (challenge.maxObjects ?? 3)) return setVerdictMsg(`${n} objects placed; the limit is ${challenge.maxObjects}.`);
+    if (falls < (challenge.target ?? 7)) return setVerdictMsg(`It fell in ${falls} of 10 runs; ${challenge.target} needed.`);
+    return clear(Math.round((await totalMass()) * 100) / 100);
+  }
+  onGoal.current = challenge?.kind === "steer" && mode === "manual" ? (t: number) => clear(Math.round(t * 10) / 10) : null;
+  function resetCourse() {
+    if (baseline.current) setPlaced(baseline.current.map((p) => ({ ...p })));
+    setTrials(null);
+    reset();
   }
 
   async function runTrials() {
@@ -463,7 +556,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
     try {
       // draw each run's trail the moment it finishes
       const sofar: NonNullable<typeof trials>["trials"] = [];
-      const summary = await sim.runTrials({ n: 10, seed, mode, pushes: pushes ? { count: 1, force: SHOVE_N } : null, maxSeconds: 20 }, (done, last) => {
+      const summary = await sim.runTrials({ n: 10, seed, mode, pushes: pushes ? { count: 1, force: SHOVE_N } : null, maxSeconds: placed.some((p) => p.kind === "mover") ? 30 : 20 }, (done, last) => {
         setTrialProgress(done);
         if (last) {
           sofar.push(last);
@@ -473,6 +566,7 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
       });
       setTrials(summary);
       viewRef.current?.showTrials(summary.trials);
+      judge(summary);
       say(`10 runs: ${Math.round(summary.passRate * 100)}% reached the goal`, summary.passRate >= 0.5 ? "pass" : "fault");
       if (courseIdSaved.current) postResult(courseIdSaved.current, { passRate: summary.passRate, trials: 10, seed, mode }).catch(() => {});
     } catch (e) {
@@ -540,11 +634,18 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
   /** One tap after a fall: save the course (named after what tripped it) and open a post with the link. */
   async function shareFail() {
     const w = window.open("about:blank", "_blank"); // opened now, inside the click, so pop-up blockers allow it
-    const names = [...new Set(placed.filter((p) => p.kind !== "mover").map((p) => p.name))].slice(0, 3);
+    // name it after what it fell on: the most common fall cause over ten trials, else the last thing it touched
+    const counts = new Map<string, number>();
+    for (const r of trials?.trials ?? []) if (r.fallCause) counts.set(r.fallCause, (counts.get(r.fallCause) ?? 0) + 1);
+    const topCause = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    const culprit = (topCause ? byUid.get(topCause)?.name : null) ?? lastTouched.current;
     const untitled = !title.trim() || title.trim() === "Untitled course";
-    const t = untitled ? (names.length ? `Tripped by ${names.join(", ")}` : "Robot down") : title;
+    let t = untitled ? (culprit ? `Tripped by ${culprit}` : "Robot down") : title;
+    if (t.length > 60) t = `${t.slice(0, 57).trimEnd()}...`;
     if (untitled) setTitle(t);
-    const url = await share(true, t);
+    // an unchanged saved or shared course keeps its link instead of saving a copy
+    const reuse = courseIdSaved.current; // its trial results were already posted when the trials finished
+    const url = reuse ? `${location.origin}/c/${reuse}` : await share(true, t);
     if (!url) {
       w?.close();
       return;
@@ -684,7 +785,48 @@ export function ArenaApp({ courseId, openMake, addId }: { courseId?: string; ope
                 </button>
               )}
             </div>
-            {shared && (
+            {challenge && (
+              <div className="absolute left-4 top-14 max-w-[min(440px,82%)] rounded-[8px] bg-black/70 px-3 py-2 text-[13px] text-white backdrop-blur-sm sm:left-6">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-semibold">Challenge: {challenge.title}</span>
+                  <a href="/gauntlet#challenges" className="shrink-0 text-[12px] text-white/70 underline-offset-2 hover:underline">
+                    All challenges
+                  </a>
+                </div>
+                <div className="mt-0.5 text-white/75">{challenge.brief}</div>
+                <div className="data mt-1.5 flex flex-wrap gap-x-4 text-[11.5px] text-target">
+                  {challenge.kind === "fix" && (
+                    <span>
+                      Moved {moves} of {challenge.maxMoves}
+                    </span>
+                  )}
+                  {challenge.kind === "trip" && (
+                    <span>
+                      Objects {placed.length} of {challenge.maxObjects}
+                    </span>
+                  )}
+                  {challenge.kind === "steer" && <span>Steer with WASD, the arrows or the pad</span>}
+                  {bestOf(challenge.id) != null && <span>Your best {scoreLabel(challenge, bestOf(challenge.id)!)}</span>}
+                  {challenge.par && <span>Par {challenge.par}</span>}
+                </div>
+                {verdictMsg && <div className="mt-1.5 text-[12.5px] text-[#ffb4ad]">{verdictMsg}</div>}
+                {challenge.kind === "fix" && moves > 0 && (
+                  <button onClick={resetCourse} className="mt-1.5 text-[12px] font-semibold text-white underline underline-offset-2">
+                    Reset course
+                  </button>
+                )}
+              </div>
+            )}
+            {cleared && challenge && (
+              <div className="pointer-events-none absolute inset-x-0 top-[38%] flex justify-center">
+                <Stamp tone="pass" animate rotate={-6} onDark className="!px-4 !py-2 text-[22px] sm:text-[28px]">
+                  Cleared · {scoreLabel(challenge, cleared.score)}
+                  {cleared.best ? " · best" : ""}
+                </Stamp>
+              </div>
+            )}
+            {/* the course banner steps aside once there is a result stamp, so it never covers Share this fail */}
+            {!challenge && shared && !statusStamp && !trials && (
               <div className="absolute left-4 top-14 max-w-[min(420px,80%)] rounded-[8px] bg-black/60 px-3 py-2 text-[13px] text-white backdrop-blur-sm sm:left-6">
                 <div className="font-semibold">Shared course: {shared.title}</div>
                 <div className="text-white/70">

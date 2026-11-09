@@ -2,6 +2,7 @@
 // Make an object with Lux3D: a sentence or a photo in, a physics-ready object out.
 import { useEffect, useRef, useState } from "react";
 import { getJob, getStatus, makeObject, type PublicJob } from "@/lib/client/api";
+import { shrinkPhoto } from "@/lib/client/shrinkPhoto";
 import { PhonePair } from "./PhonePair";
 
 const EXAMPLES = ["a stack of three old car tires", "a garden gnome", "a wooden step stool", "a laundry basket full of towels", "a traffic cone", "a beanbag chair"];
@@ -95,7 +96,8 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
     setError(null);
     setBusy(true);
     try {
-      const r = await makeObject(mode === "text" ? { text: text.trim(), style } : { image: file!, label: file?.name.replace(/\.[a-z]+$/i, "") });
+      // photos are sent without a label (the file name is not a name), so the server calls it "Photo object"
+      const r = await makeObject(mode === "text" ? { text: text.trim(), style } : { image: await shrinkPhoto(file!) });
       setJob(r.job ?? (await getJob(r.jobId)));
     } catch (e) {
       setError((e as Error).message);
@@ -123,9 +125,11 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
         ))}
       </div>
 
-      {mode === "phone" ? (
-        <PhonePair onReady={onReady} />
-      ) : mode === "text" ? (
+      {/* kept mounted while other tabs are open, so a phone's objects keep arriving */}
+      <div className={mode === "phone" ? "" : "hidden"}>
+        <PhonePair onReady={onReady} active={mode === "phone"} />
+      </div>
+      {mode === "phone" ? null : mode === "text" ? (
         <div className="space-y-3">
           <label className="block">
             <span className="text-[13px] font-semibold text-ink-2">What should Lux3D make?</span>
@@ -168,7 +172,7 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
           ) : (
             <div className="px-4 py-8">
               <div className="font-semibold">Take or choose a photo</div>
-              <div className="mt-1 text-[13px] text-ink-3">One object, plain background works best. JPEG, PNG or WebP up to 8 MB.</div>
+              <div className="mt-1 text-[13px] text-ink-3">One object, plain background works best. Any phone photo; JPEG, PNG or WebP.</div>
             </div>
           )}
         </label>
@@ -182,9 +186,10 @@ export function MakePanel({ onReady, initialMode = "text" }: { onReady: (objectI
           onClick={submit}
           className="h-11 w-full rounded-[10px] bg-target font-semibold shadow-[inset_0_-2px_0_rgba(0,0,0,0.18)] transition-opacity disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {busy ? "Sending to Lux3D…" : "Make it"}
+          {busy ? (mode === "photo" ? "Preparing and sending…" : "Sending to Lux3D…") : "Make it"}
         </button>
         {reason && !busy && <p className="mt-2 text-[12.5px] text-ink-3">{reason}</p>}
+        {mode === "photo" && <p className="mt-2 text-[12.5px] text-ink-3">Your photo and the object are shown in the public library.</p>}
         {!job && queue && (
           <p className="mt-2 text-[12.5px] text-ink-3">
             Free · about 4 min with part-split, and you can keep playing while it builds ·{" "}

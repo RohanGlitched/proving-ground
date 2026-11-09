@@ -386,10 +386,10 @@ export default async function ReportPage() {
           <div>
             <div className="cols-2 grid grid-cols-2 gap-4">
               <figure>
-                <Tile src="sneaker-raw.jpg" alt="The raw Lux3D sneaker mesh with its wireframe, too dense to see" chip="Lux3D mesh · 305,236 triangles" tone="fault" />
+                <Tile src="sneaker-raw.jpg" imgClass="!h-[190px] object-cover" alt="The raw Lux3D sneaker mesh with its wireframe, too dense to see" chip="Lux3D mesh · 305,236 triangles" tone="fault" />
               </figure>
               <figure>
-                <Tile src="sneaker-final.jpg" alt="The processed sneaker with its wireframe" chip="After processing · 24,250" tone="pass" />
+                <Tile src="sneaker-final.jpg" imgClass="!h-[190px] object-cover" alt="The processed sneaker with its wireframe" chip="After processing · 24,250" tone="pass" />
               </figure>
             </div>
             <div className="table-wrap mt-4">
@@ -397,7 +397,7 @@ export default async function ReportPage() {
                 <thead>
                   <tr>
                     <th className="w-[26%]"> </th>
-                    <th>First try (sneaker from a photo)</th>
+                    <th>First try (photo sneaker)</th>
                     <th>Now</th>
                   </tr>
                 </thead>

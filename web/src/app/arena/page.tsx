@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "Build a course from Lux3D objects and watch Unitree's G1 walking controller try to cross it.",
 };
 
-export default async function ArenaPage({ searchParams }: { searchParams: Promise<{ make?: string; course?: string; add?: string }> }) {
+export default async function ArenaPage({ searchParams }: { searchParams: Promise<{ make?: string; course?: string; add?: string; challenge?: string }> }) {
   const sp = await searchParams;
-  return <ArenaApp openMake={sp.make === "1"} courseId={sp.course} addId={sp.add} />;
+  return <ArenaApp openMake={sp.make === "1"} courseId={sp.course} addId={sp.add} challengeId={sp.challenge} />;
 }

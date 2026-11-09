@@ -56,10 +56,11 @@ export async function getLibrary(): Promise<LibraryEntry[]> {
   return d.items ?? [];
 }
 
-export async function makeObject(input: { text?: string; image?: File; style?: string; kind?: string; label?: string }) {
+/** Photos should go through shrinkPhoto first: Vercel refuses request bodies over 4.5 MB. */
+export async function makeObject(input: { text?: string; image?: Blob; style?: string; kind?: string; label?: string }) {
   const fd = new FormData();
   if (input.text) fd.set("text", input.text);
-  if (input.image) fd.set("image", input.image);
+  if (input.image) fd.set("image", input.image, "photo.jpg");
   if (input.style) fd.set("style", input.style);
   fd.set("kind", input.kind ?? "object");
   if (input.label) fd.set("label", input.label);

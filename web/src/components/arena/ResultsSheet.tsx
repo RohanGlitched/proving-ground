@@ -53,7 +53,7 @@ export function ResultsSheet({
             <span className="data text-[9.5px] text-ink-3">{String(i + 1).padStart(2, "0")}</span>
             {t ? (
               <span className={`text-[11px] font-extrabold uppercase ${t.result === "goal" ? "text-pass" : t.result === "fell" ? "text-fault" : "text-ink-3"}`}>
-                {t.result === "goal" ? "pass" : t.result === "fell" ? "fell" : "time"}
+                {t.result === "goal" ? "pass" : t.result === "fell" ? "fell" : "stuck"}
               </span>
             ) : (
               <span className={`h-2 w-2 rounded-full ${running != null && i === running ? "animate-pulse bg-target" : "bg-ink/15"}`} />

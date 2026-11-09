@@ -156,6 +156,13 @@ export class ArenaView {
   private baseFov = 0;
   private lastPelvis = new THREE.Vector3();
   private robotFlash = 0;
+  private home!: { pos: THREE.Vector3; target: THREE.Vector3 };
+  private homeT = 0;
+
+  /** Glide the camera back to the course framing it opened with (after steering, or a robot that wandered off). */
+  recenter() {
+    this.homeT = 1;
+  }
 
   constructor(canvas: HTMLCanvasElement) {
     this.stage = new Stage({ canvas, dark: true });
@@ -170,6 +177,7 @@ export class ArenaView {
       this.stage.camera.position.set(-2.6, 3.4, 5.6);
       this.stage.controls?.target.set(1.9, 0.4, 0);
     }
+    this.home = { pos: this.stage.camera.position.clone(), target: this.stage.controls?.target.clone() ?? new THREE.Vector3(1.6, 0.5, 0) };
     this.stage.scene.add(this.goal, this.start, this.trails, this.marks);
     this.selectedRing = new THREE.Mesh(
       new THREE.RingGeometry(0.5, 0.54, 64),
@@ -446,6 +454,12 @@ export class ArenaView {
     const cam = this.stage.camera;
     cam.position.sub(this.shake);
     this.shake.set(0, 0, 0);
+    if (this.homeT > 0 && this.stage.controls) {
+      const k = Math.min(1, dt * 4);
+      cam.position.lerp(this.home.pos, k);
+      this.stage.controls.target.lerp(this.home.target, k);
+      this.homeT = Math.max(0, this.homeT - dt / 0.9);
+    }
     if (this.chase && this.focus && this.stage.controls) {
       // keep the orbit, slide it along with the robot
       const t = this.stage.controls.target;

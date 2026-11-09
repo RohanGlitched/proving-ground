@@ -4,7 +4,9 @@
 import { getPhysics } from "./api";
 import { defaultDensity } from "@/lib/density";
 
-export type TripResult = { n: number; passes: number; falls: number; timeouts: number; touched: number; live?: boolean };
+export type TripResult = { n: number; passes: number; falls: number; timeouts: number; touched: number; live?: boolean; /** kg at the default density, as simulated */ mass?: number };
+
+export const massLabel = (kg: number) => (kg < 1 ? `${Math.round(kg * 1000)} g` : `${kg < 10 ? kg.toFixed(1) : Math.round(kg)} kg`);
 
 let index: Promise<Record<string, TripResult>> | null = null;
 export function tripIndex() {

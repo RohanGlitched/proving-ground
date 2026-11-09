@@ -13,7 +13,7 @@ export const FACTS = [
   {
     value: "~90 s",
     label: "Photo to 3D object",
-    detail: "Lux3D Turbo generation, measured on 20+ library jobs (79–105 s). With part-split and processing, a finished object takes about 2 minutes, or 4 with parts.",
+    detail: "Lux3D Turbo generation, measured on every library job (79–147 s, typically about 90). With part-split and processing, a finished object takes about 2 minutes, or 4 with parts.",
   },
   {
     value: "8 parts",

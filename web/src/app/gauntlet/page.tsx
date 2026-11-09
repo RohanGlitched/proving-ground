@@ -1,3 +1,4 @@
+import { ChallengeList } from "@/components/gauntlet/ChallengeList";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Nav } from "@/components/site/Nav";
@@ -20,7 +21,8 @@ export default function GauntletPage() {
             <p className="mt-4 max-w-2xl text-[17px] leading-[1.7] text-ink-2">
               Courses built from Lux3D objects and tested ten runs at a time. It starts with a set we seeded; anything you save from the arena
               joins it. The pass rate is the share of all recorded trials where the robot reached the flag. Open one to watch it, remix it, or
-              try to beat it with the planner.
+              try to beat it with the planner. Trials run in each visitor&apos;s browser, which reports the result, so open any course and
+              press Run 10 trials to check a number yourself.
             </p>
           </div>
           <div className="flex items-end md:col-span-5 md:justify-end">
@@ -29,6 +31,8 @@ export default function GauntletPage() {
             </Link>
           </div>
         </div>
+        <ChallengeList />
+        <h2 className="placard-sm mt-14 text-[27px] sm:text-[31px]">Courses</h2>
         <CourseList />
       </main>
       <Footer />

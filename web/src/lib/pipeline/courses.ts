@@ -18,7 +18,51 @@ export type StoredCourse = Record<string, unknown> & { id: string; title: string
 const INDEX_KEY = "courses/index.json";
 const finite = (v: unknown) => typeof v === "number" && Number.isFinite(v);
 
-/** Checks a course body and returns a cleaned copy. Unknown fields are kept (within the size cap). */
+const ARENA_HALF = 25; // metres: placed objects, the goal and the start stay within ±25 m
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+export const MAX_OBJECT_NAME = 40;
+
+function num(v: unknown, what: string, lo: number, hi: number, fallback?: number): number {
+  if (v === undefined && fallback !== undefined) return fallback;
+  if (!finite(v)) throw new InputError(`${what} must be a finite number.`);
+  return clamp(v as number, lo, hi);
+}
+
+/** A placed object, cut down to the fields the arena reads, with numbers clamped to the arena. */
+function cleanPlaced(o: unknown) {
+  if (!o || typeof o !== "object" || Array.isArray(o)) throw new InputError("Each placed object must be a JSON object.");
+  const r = o as Record<string, unknown>;
+  const objectId = r.objectId;
+  if (typeof objectId !== "string" || !/^[0-9a-z_-]{2,40}$/.test(objectId)) throw new InputError("Each placed object needs a valid objectId.");
+  if (r.name !== undefined && typeof r.name !== "string") throw new InputError("Each placed object's name must be text.");
+  const name = normaliseText((r.name as string | undefined) ?? "") || "Object";
+  if (name.length > MAX_OBJECT_NAME) throw new InputError(`Please keep object names under ${MAX_OBJECT_NAME} characters.`);
+  if (isBlocked(name)) throw new InputError("One of the object names isn't allowed here.");
+  if (r.kind !== undefined && r.kind !== "object" && r.kind !== "mover") throw new InputError("A placed object's kind must be object or mover.");
+  const out: { objectId: string; name: string; x: number; y: number; yaw: number; density?: number; kind?: "object" | "mover" } = {
+    objectId,
+    name,
+    x: num(r.x, "Placed object x", -ARENA_HALF, ARENA_HALF),
+    y: num(r.y, "Placed object y", -ARENA_HALF, ARENA_HALF),
+    yaw: num(r.yaw, "Placed object yaw", -4 * Math.PI, 4 * Math.PI, 0),
+  };
+  if (r.density !== undefined && r.density !== null) out.density = num(r.density, "Placed object density", 10, 12000);
+  if (r.kind !== undefined) out.kind = r.kind as "object" | "mover";
+  return out;
+}
+
+function cleanPoint(v: unknown, what: string, withYaw: boolean) {
+  if (!v || typeof v !== "object" || Array.isArray(v)) throw new InputError(`${what} must be an object with x and y.`);
+  const r = v as Record<string, unknown>;
+  const p = { x: num(r.x, `${what} x`, -ARENA_HALF, ARENA_HALF), y: num(r.y, `${what} y`, -ARENA_HALF, ARENA_HALF) };
+  return withYaw ? { ...p, yaw: num(r.yaw, `${what} yaw`, -4 * Math.PI, 4 * Math.PI, 0) } : p;
+}
+
+/**
+ * Checks a course body and returns a cleaned copy. Placed objects keep only the fields the arena reads
+ * (objectId, name, x, y, yaw, density, kind), numbers are clamped to the arena, and goal/start must be
+ * points. Other top-level fields are kept (within the size cap).
+ */
 export function validateCourse(raw: unknown, byteLength: number): Omit<StoredCourse, "id" | "createdAt"> {
   if (byteLength > MAX_COURSE_BYTES) throw new InputError("That course is too large to save (50 KB at most).", 413);
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new InputError("A course must be a JSON object.");
@@ -33,21 +77,14 @@ export function validateCourse(raw: unknown, byteLength: number): Omit<StoredCou
   }
   if (!Array.isArray(c.objects)) throw new InputError("A course needs an objects list.");
   if (c.objects.length > MAX_COURSE_OBJECTS) throw new InputError(`A course can hold at most ${MAX_COURSE_OBJECTS} objects.`);
-  for (const o of c.objects) {
-    if (!o || typeof o !== "object") throw new InputError("Each placed object must be a JSON object.");
-    const id = (o as { objectId?: unknown }).objectId;
-    if (typeof id !== "string" || !/^[0-9a-z_-]{2,40}$/.test(id)) throw new InputError("Each placed object needs a valid objectId.");
-    for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
-      if (typeof v === "number" && !Number.isFinite(v)) throw new InputError(`Placed object field ${k} must be a finite number.`);
-    }
-  }
-  for (const k of ["goal", "robotStart"]) {
-    const v = c[k];
-    if (v !== undefined && (typeof v !== "object" || v === null)) throw new InputError(`${k} must be an object or an array.`);
-    if (v && Object.values(v as object).some((x) => typeof x === "number" && !finite(x))) throw new InputError(`${k} must hold finite numbers.`);
-  }
+  const objects = c.objects.map(cleanPlaced);
+  if (c.goal === undefined) throw new InputError("A course needs a goal.");
+  c.goal = cleanPoint(c.goal, "goal", false);
+  if (c.start !== undefined) c.start = cleanPoint(c.start, "start", true);
+  if (c.robotStart !== undefined) c.robotStart = cleanPoint(c.robotStart, "robotStart", true);
   if (c.mode !== undefined && (typeof c.mode !== "string" || c.mode.length > 16)) throw new InputError("mode must be a short string.");
-  return { ...c, title, objects: c.objects } as Omit<StoredCourse, "id" | "createdAt">;
+  if (c.pushes !== undefined && typeof c.pushes !== "boolean") throw new InputError("pushes must be true or false.");
+  return { ...c, title, objects } as Omit<StoredCourse, "id" | "createdAt">;
 }
 
 export async function saveCourse(raw: unknown, byteLength: number, s: Store = defaultStore()): Promise<StoredCourse> {

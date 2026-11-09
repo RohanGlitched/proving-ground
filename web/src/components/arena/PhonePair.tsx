@@ -18,33 +18,80 @@ function roomCode() {
   return c;
 }
 
-export function PhonePair({ onReady }: { onReady: (objectId: string, name: string) => void }) {
+// Jobs already dropped into this arena (or failed), per room, so a remount never delivers them twice.
+const deliveredKey = (code: string) => `pg-room-delivered-${code}`;
+const ACTIVE_KEY = "pg-room-active";
+
+function loadDelivered(code: string): Set<string> {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(deliveredKey(code)) ?? "[]");
+    if (Array.isArray(raw)) return new Set(raw.filter((x): x is string => typeof x === "string"));
+  } catch {}
+  return new Set();
+}
+
+function saveDelivered(code: string, ids: Set<string>) {
+  try {
+    sessionStorage.setItem(deliveredKey(code), JSON.stringify([...ids].slice(-50)));
+  } catch {}
+}
+
+function wasActive() {
+  try {
+    return sessionStorage.getItem(ACTIVE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `active` is true while the Phone tab is showing. The room only opens (and polling only starts) once
+ * the Phone tab has been shown in this browser tab; after that it keeps polling while hidden, so
+ * objects sent from the phone still arrive when another tab is open.
+ */
+export function PhonePair({ onReady, active = true }: { onReady: (objectId: string, name: string) => void; active?: boolean }) {
   const [code] = useState(roomCode);
   const [qr, setQr] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Record<string, PublicJob>>({});
-  const delivered = useRef(new Set<string>());
+  const [on, setOn] = useState(() => active || wasActive());
+  const delivered = useRef<Set<string> | null>(null);
   const url = typeof window !== "undefined" ? `${location.origin}/snap/${code}` : "";
 
   useEffect(() => {
-    import("qrcode").then((Q) => Q.toDataURL(url, { margin: 1, width: 320, color: { dark: "#141517", light: "#f7f6f2" } }).then(setQr));
-  }, [url]);
+    if (!active) return;
+    setOn(true);
+    try {
+      sessionStorage.setItem(ACTIVE_KEY, "1");
+    } catch {}
+  }, [active]);
 
   useEffect(() => {
+    if (!on) return;
+    import("qrcode").then((Q) => Q.toDataURL(url, { margin: 1, width: 320, color: { dark: "#141517", light: "#f7f6f2" } }).then(setQr));
+  }, [url, on]);
+
+  useEffect(() => {
+    if (!on) return;
     let alive = true;
+    const done = (delivered.current ??= loadDelivered(code));
+    const mark = (id: string) => {
+      done.add(id);
+      saveDelivered(code, done);
+    };
     const tick = async () => {
       try {
         const r = await fetch(`/api/rooms/${code}?host=1`, { cache: "no-store" }).then((x) => x.json());
         const ids: string[] = (r.jobs ?? []).map((j: { id: string }) => j.id);
         for (const id of ids) {
-          if (delivered.current.has(id)) continue;
+          if (done.has(id)) continue;
           const j = await getJob(id);
           if (!alive) return;
           setJobs((m) => ({ ...m, [id]: j }));
           if (j.status === "done" && j.result) {
-            delivered.current.add(id);
+            mark(id);
             onReady(j.result.objectId, j.input.label ?? "a photographed object");
           }
-          if (j.status === "failed") delivered.current.add(id);
+          if (j.status === "failed") mark(id);
         }
       } catch {}
     };
@@ -54,7 +101,7 @@ export function PhonePair({ onReady }: { onReady: (objectId: string, name: strin
       alive = false;
       clearInterval(t);
     };
-  }, [code, onReady]);
+  }, [code, onReady, on]);
 
   const list = Object.values(jobs).sort((a, b) => b.createdAt - a.createdAt);
   return (

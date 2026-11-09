@@ -1,8 +1,8 @@
 // Report content. Every number is measured in this repo (probe/, tests, trial runs, job records); see /how.
-// BEGIN GENERATED (scratchpad rep/gen-data.py, from the stored job records, Nov 9, 2026 6:21 IST)
+// BEGIN GENERATED (scratchpad rep/gen-data.py, from the stored job records, Nov 9, 2026 7:13 IST)
 const GENERATED = {
   gen: {"min": 79, "max": 147, "median": 89, "n": 66},
-  rawTris: [["kitchen-chair", 17936], ["traffic-cone", 18210], ["park-bench", 19294], ["cardboard-box", 17188], ["car-tire", 14376], ["basketball", 18628], ["laundry-basket", 16592], ["potted-plant", 24540], ["office-chair", 23836], ["door", 20476], ["a49v6l6i2j", 17450], ["garden-gate", 16360], ["xhyj8f6ihe", 20560], ["wheelie-bin", 20054], ["skateboard", 19770], ["toolbox", 20418], ["watermelon", 18068], ["stack-of-books", 18098], ["bar-stool", 18016], ["floor-lamp", 32108], ["side-table", 18130], ["bean-bag", 18010], ["rolled-rug", 19146], ["folding-chair", 13446], ["step-stool", 18786], ["coat-rack", 18684], ["standing-fan", 29504], ["ottoman", 17114], ["toy-truck", 24624], ["teddy-bear", 17280], ["block-pile", 15804], ["rocking-horse", 20770], ["toy-train", 25442], ["football", 16364], ["hurdle", 24450], ["kettlebell", 18166], ["yoga-ball", 18136], ["agility-ladder", 19528], ["rock", 18286], ["log", 17782], ["fire-hydrant", 19338], ["trash-can", 22344], ["mailbox", 30030], ["bollard", 34860], ["garden-gnome", 19472], ["wheelbarrow", 18116], ["shopping-cart", 30624], ["wooden-pallet", 15356], ["sawhorse", 17578], ["barrel", 18916], ["cinder-block", 15584], ["sandbag", 21044], ["bicycle", 24458], ["pumpkin", 17750], ["pineapple", 27666], ["pizza-boxes", 13404], ["suitcase", 19878], ["guitar-case", 18924], ["robot-vacuum", 15312], ["banana-peel", 18048], ["bucket", 16430], ["ladder", 23438], ["cat-bed", 18258], ["umbrella", 32366], ["dog-house", 10804]] as [string, number][],
+  rawTris: [["kitchen-chair", 17936], ["traffic-cone", 18210], ["park-bench", 19294], ["cardboard-box", 17188], ["car-tire", 14376], ["basketball", 18628], ["laundry-basket", 16592], ["potted-plant", 24540], ["office-chair", 23836], ["door", 20476], ["a-stack-of-three-old-car", 17450], ["garden-gate", 16360], ["old-rucksack", 20560], ["wheelie-bin", 20054], ["skateboard", 19770], ["toolbox", 20418], ["watermelon", 18068], ["stack-of-books", 18098], ["bar-stool", 18016], ["floor-lamp", 32108], ["side-table", 18130], ["bean-bag", 18010], ["rolled-rug", 19146], ["folding-chair", 13446], ["step-stool", 18786], ["coat-rack", 18684], ["standing-fan", 29504], ["ottoman", 17114], ["toy-truck", 24624], ["teddy-bear", 17280], ["block-pile", 15804], ["rocking-horse", 20770], ["toy-train", 25442], ["football", 16364], ["hurdle", 24450], ["kettlebell", 18166], ["yoga-ball", 18136], ["agility-ladder", 19528], ["rock", 18286], ["log", 17782], ["fire-hydrant", 19338], ["trash-can", 22344], ["mailbox", 30030], ["bollard", 34860], ["garden-gnome", 19472], ["wheelbarrow", 18116], ["shopping-cart", 30624], ["wooden-pallet", 15356], ["sawhorse", 17578], ["barrel", 18916], ["cinder-block", 15584], ["sandbag", 21044], ["bicycle", 24458], ["pumpkin", 17750], ["pineapple", 27666], ["pizza-boxes", 13404], ["suitcase", 19878], ["guitar-case", 18924], ["robot-vacuum", 15312], ["banana-peel", 18048], ["bucket", 16430], ["ladder", 23438], ["cat-bed", 18258], ["umbrella", 32366], ["dog-house", 10804]] as [string, number][],
   overBudget: [["floor-lamp", 32108, 24243], ["standing-fan", 29504, 24248], ["toy-train", 25442, 24242], ["mailbox", 30030, 24423], ["bollard", 34860, 24248], ["shopping-cart", 30624, 24513], ["pineapple", 27666, 24248], ["umbrella", 32366, 24246]] as [string, number, number][],
   triRange: [10804, 34860, 18628],
   rawMB: [7, 12],
@@ -45,6 +45,8 @@ export const REPORT = {
     ["Split into parts", "part-split", "30", "~95 s"],
     ["Rig a person", "animations/rig", "15", "~63 s"],
     ["Make them walk", "animations/retarget · Walk_Loop", "6", "~120 s"],
+    ["Hinges for doors and gates", "articulation · URDF", "28", "~3 min"],
+    ["STL / OBJ / FBX download", "multi-format-export", "0", "~30 s"],
     ["Price every job first", "pricing/openapi-quotes", "0", "<1 s"],
   ] as string[][],
   pipelineNotes: [
@@ -88,7 +90,7 @@ export const REPORT = {
     ["Mean time to the flag", "16.7 s", "10.9 s"],
   ] as string[][],
   hullsNote:
-    "20 blind walks per version (two seeds of ten). Most of the gap is mass: the single hull at the corrected mass gets 9 of 10 in 11.4 s. The parts add shape: the eight part hulls together fill 49.8 L for 12.9 L of chair, so legs, seat and back each act as their own solid.",
+    "20 blind walks per version (two seeds of ten), chair square-on 1.5 m ahead. Most of the gap is mass: the single hull at the corrected mass gets 9 of 10 in 11.4 s. The parts add shape: the eight part hulls together fill 49.8 L for 12.9 L of chair, so legs, seat and back each act as their own solid.",
   materialize: [
     ["mat-1.jpg", "Points condense", "Lux3D mesh vertices"],
     ["mat-2.jpg", "Texture sweeps in", "real size, in metres"],
@@ -104,9 +106,9 @@ export const REPORT = {
       ["GLB from Lux3D", "18.9 MB, two 2048 px PNG textures", `${GENERATED.rawMB[0]} – ${GENERATED.rawMB[1]} MB`],
       ["After our processing", "24,250 triangles, 769 KB", `${(GENERATED.webKB[0] / 1000).toFixed(1)} – ${(GENERATED.webKB[1] / 1000).toFixed(1)} MB, same triangles`],
       ["Textures", "2 × 2048 px PNG", "1 × 1024 px WebP, meshopt-compressed"],
-      ["Over the 25,000 budget", "simplified from 305,236", GENERATED.overBudget.map(([n, a, b]) => `${n.replace("-", " ")} ${n0(a)} → ${n0(b)}`).join(", ") || "none"],
+      ["Over the 25,000 budget", "simplified from 305,236", GENERATED.overBudget.length ? `${GENERATED.overBudget.length} objects, simplified to just under 25,000` : "none"],
     ] as string[][],
-    totals: `All ${GENERATED.totals.objects} objects: ${GENERATED.totals.rawMB} MB of GLB from Lux3D, ${GENERATED.totals.webMB} MB loaded by the browser.`,
+    totals: `All ${GENERATED.totals.objects} objects (people not counted): ${GENERATED.totals.rawMB} MB of GLB from Lux3D, ${GENERATED.totals.webMB} MB loaded by the browser.`,
   },
   rawTris: GENERATED.rawTris,
   overBudget: GENERATED.overBudget,
@@ -142,27 +144,27 @@ export const REPORT = {
     ["Park bench across the path", "0 of 10", "10 of 10"],
     ["Kitchen floor: chair, sneaker, cone", "8 of 10", "–"],
     ["Same, one 170 N shove per run", "7 of 10", "–"],
-    ["8-part Lux3D chair, trip test", "5 of 10", "–"],
-    ["0.55 kg sneaker; 2.7 kg cone", "10 of 10 each", "–"],
+    ["8-part Lux3D chair, trip test (1.4 m, chair turned and shifted each run)", "5 of 10", "–"],
+    ["0.55 kg sneaker; 2.0 kg cone", "10 of 10 each", "–"],
     ["Fixed 6 cm or 12 cm step", "0 of 10", "–"],
   ] as string[][],
   results: [
     `With the jogger crossing, a blind walk mostly trips on the cardboard box and reaches the flag ${JOG.blind} times in 10. The planner routes around the objects and waits for the jogger to pass: ${JOG.planner} of 10 in the arena, ${JOG.script} of 10 in the check script (scripts/jogger-check.mjs). That gap is what perception is worth, measured.`,
-    "A Lux3D park bench across the path is the clearest case: the blind walk pushes a 56 kg bench and stalls; the planner routes around it. In the 8-part chair trip test the blind walk gets 1 fall and 4 stuck pushing it.",
+    "A Lux3D park bench across the path is the clearest case: the blind walk pushes a 56 kg bench and stalls; the planner routes around it. In the 8-part chair trip test, where the chair is turned and shifted at random each run (harder than the square-on comparison on the hull slide), the blind walk gets 1 fall and 4 stuck pushing it.",
     "Fixed steps trip the robot every time, and every trial records what it tripped on.",
   ],
   extras: [
     ["x-phone.jpg", "Snap from your phone", "Scan the QR code, photograph something real, and it lands in the desktop arena. The phone page sends nothing until you press the button."],
     ["x-library.jpg", "A shared library", "Every object anyone makes, with parts and hulls, downloadable as a robot-ready pack: textured GLB, one STL hull per part, MJCF body with masses."],
-    ["x-gauntlet.jpg", "The gauntlet", "Courses ranked by how often the robot fails them. Remix one, or beat it with the planner."],
+    ["x-challenges.jpg", "Challenges and the gauntlet", "A goal, a limit and a score: fix a course in as few moves as possible, trip the robot with the least mass, or steer it home against the clock. Plus 23 courses ranked by how often the robot fails them."],
   ] as [string, string, string][],
   limits: [
     "The controller is blind and was trained on flat ground; it never sees the objects. Planner mode adds a map of footprints, not vision.",
-    "Each part collides as its convex hull; hollow parts (a bowl) are filled.",
-    "Mass is an estimate from volume and a density you can change.",
+    "Each part collides as its convex hull (a bowl is filled), and mass is an estimate from volume and a density you can change.",
     "Walking people are kinematic: they push the robot but cannot be pushed.",
     "One Lux3D generation at a time per account, so new objects can queue.",
     "Lux3D sometimes misjudges size. The size check covers library objects only; things people make keep Lux3D's own size.",
+    "Trial results are run and reported by each visitor's browser; anyone can rerun a course to check it.",
   ],
   next: [
     "Grasping: the same objects for a manipulation policy (Lux3D part-split gives handles and lids for free).",

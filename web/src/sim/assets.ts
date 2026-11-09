@@ -7,8 +7,8 @@
 // GLB origin. The engine rests the object's lowest point on the floor unless SceneObject.z is given.
 import { WebIO, type Document } from '@gltf-transform/core';
 import { bbox, boundedHull, clusterPoints, convexHull } from './hull';
-import type { CollisionPart } from './types';
-import { DEFAULT_DENSITY, MASS_MAX, MASS_MIN } from './engine';
+import type { ArticulationJoint, CollisionPart } from './types';
+import { DEFAULT_DENSITY, MASS_MAX, MASS_MIN, framePosts, prepareParts } from './engine';
 
 export interface ObjectAsset {
   /** Hull points per part (object frame, Z up, meters). part.volume is the part's solid volume (used for mass). */
@@ -208,7 +208,9 @@ export interface MjcfExport {
 }
 
 /** Robot-ready pack: MJCF + per-part STL. Units meters, Z up, mass from hull volume x density. */
-export function toMJCF(object: { name: string; parts: CollisionPart[]; density?: number; mass?: number; friction?: number }): MjcfExport {
+export function toMJCF(object: { name: string; parts: CollisionPart[]; density?: number; mass?: number; friction?: number; joints?: ArticulationJoint[] }): MjcfExport {
+  const joints = (object.joints ?? []).filter((j) => j.child >= 0 && j.child < object.parts.length);
+  if (joints.length) return toArticulatedMJCF({ ...object, joints });
   const safe = object.name.replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'object';
   const files: Record<string, Uint8Array> = {};
   const vols = object.parts.map((p) => p.volume ?? convexHull(p.points).volume);
@@ -235,6 +237,80 @@ ${meshes.join('\n')}
     <body name="${safe}" pos="0 0 ${(-Math.min(...object.parts.map((p) => bbox(p.points).min[2])) + 0.002).toFixed(4)}">
       <freejoint/>
 ${geoms.join('\n')}
+    </body>
+  </worldbody>
+</mujoco>
+`;
+  const scene = `<!-- ${safe} on a floor. Load with mujoco.MjModel.from_xml_path("scene.xml"). -->
+<mujoco model="${safe}_scene">
+  <include file="object.xml"/>
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1"/>
+    <geom name="floor" type="plane" size="0 0 0.05"/>
+  </worldbody>
+</mujoco>
+`;
+  return { xml, files, mass, scene };
+}
+
+/**
+ * Articulated objects (Lux3D articulation): the same bodies the arena simulates. The base stands fixed (no free
+ * joint), each moving part hangs in a child body on a hinge or slide at Lux3D's pivot and axis with its limits, and a
+ * concave base frame collides as two posts (see framePosts in engine.ts), exactly as in the arena.
+ */
+function toArticulatedMJCF(object: { name: string; parts: CollisionPart[]; density?: number; mass?: number; friction?: number; joints: ArticulationJoint[] }): MjcfExport {
+  const safe = object.name.replace(/[^A-Za-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'object';
+  const files: Record<string, Uint8Array> = {};
+  const fmt = (v: number) => String(Math.round(v * 1e5) / 1e5);
+  const zup = (v: number[]) => [v[0], -v[2], v[1]];
+  const childOf = new Map<number, number>();
+  object.joints.forEach((j, ji) => childOf.set(j.child, ji));
+  const prepped: { verts: Float32Array; volume: number; ji: number | undefined; minZ: number }[] = [];
+  object.parts.forEach((part, pi) => {
+    const p = prepareParts([part])[0];
+    if (!p) return;
+    const ji = childOf.get(pi);
+    for (const q of (ji === undefined ? framePosts(p) : null) ?? [p]) prepped.push({ verts: q.verts, volume: q.volume, ji, minZ: q.minZ });
+  });
+  const volume = prepped.reduce((s, p) => s + p.volume, 0);
+  const mass = Math.min(MASS_MAX, Math.max(MASS_MIN, object.mass ?? volume * (object.density ?? DEFAULT_DENSITY)));
+  const fr = object.friction ?? 0.8;
+  const meshes: string[] = [];
+  const base: string[] = [];
+  const kids: string[][] = object.joints.map(() => []);
+  prepped.forEach((p, k) => {
+    const off = p.ji === undefined ? [0, 0, 0] : zup(object.joints[p.ji].pivot);
+    const pts = new Float32Array(p.verts.length);
+    for (let i = 0; i < pts.length; i++) pts[i] = p.verts[i] - off[i % 3];
+    const f = `meshes/${safe}_part${k}.stl`;
+    files[f] = hullToStl(pts);
+    meshes.push(`    <mesh name="${safe}_part${k}" file="${f}"/>`);
+    const g = `<geom type="mesh" mesh="${safe}_part${k}" mass="${fmt(Math.max(1e-4, (mass * p.volume) / Math.max(volume, 1e-9)))}" friction="${fr} 0.005 0.0001" condim="3"/>`;
+    (p.ji === undefined ? base : kids[p.ji]).push(g);
+  });
+  const children = object.joints.map((j, ji) => {
+    if (!kids[ji].length) return '';
+    const slide = j.type === 'prismatic';
+    const lo = Number.isFinite(j.lower) ? j.lower : 0, hi = Number.isFinite(j.upper) ? j.upper : 0;
+    const limited = j.type !== 'continuous' && hi > lo;
+    return `      <body name="${safe}_moving${ji}" pos="${zup(j.pivot).map(fmt).join(' ')}">
+        <joint name="${safe}_${slide ? 'slide' : 'hinge'}${ji}" type="${slide ? 'slide' : 'hinge'}" axis="${zup(j.axis).map(fmt).join(' ')}"${limited ? ` limited="true" range="${fmt(lo)} ${fmt(hi)}"` : ''} damping="${slide ? 20 : 1.2}" frictionloss="0.3" armature="0.02"/>
+        ${kids[ji].join('\n        ')}
+      </body>`;
+  });
+  const minZ = Math.min(...prepped.map((p) => p.minZ));
+  const xml = `<!-- ${safe}: articulated, ${prepped.length} convex parts, ${mass.toFixed(3)} kg, generated by Proving Ground. Units m, Z up.
+     The base stands fixed; moving parts hang on Lux3D's joints. A concave frame collides as two posts, as in the arena.
+     Include it in your own scene with <include file="object.xml"/>, or load scene.xml for a floor plus this object. -->
+<mujoco model="${safe}">
+  <compiler angle="radian"/>
+  <asset>
+${meshes.join('\n')}
+  </asset>
+  <worldbody>
+    <body name="${safe}" pos="0 0 ${fmt(-minZ)}">
+      ${base.join('\n      ')}
+${children.filter(Boolean).join('\n')}
     </body>
   </worldbody>
 </mujoco>

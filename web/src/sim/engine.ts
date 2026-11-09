@@ -30,7 +30,7 @@ export const DEFAULT_DENSITY = 400; // kg/m^3 over hull volume
 export const MASS_MIN = 0.05, MASS_MAX = 80;
 export const MAX_PART_VERTS = 96; // hull vertices kept per part (MuJoCo hulls them again)
 
-interface PreparedPart { verts: Float32Array; volume: number; minZ: number; maxZ: number; fill?: number }
+export interface PreparedPart { verts: Float32Array; volume: number; minZ: number; maxZ: number; fill?: number }
 
 interface Entity {
   index: number;
@@ -114,13 +114,14 @@ function torsoParts(parts: CollisionPart[]): CollisionPart[] {
  * fills under 45% of its hull, collide with two posts at the ends of its width instead (full height and
  * depth, thickness from the measured mesh volume). Returns null for solid parts.
  */
-function framePosts(p: PreparedPart): PreparedPart[] | null {
+export function framePosts(p: PreparedPart): PreparedPart[] | null {
   if (p.fill === undefined || p.fill >= 0.45) return null;
   const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < p.verts.length; i += 3) for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], p.verts[i + k]); mx[k] = Math.max(mx[k], p.verts[i + k]); }
   const ext = [mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]];
   const w = ext[0] >= ext[1] ? 0 : 1, d = 1 - w; // width and depth axes in the floor plane
-  const t = Math.min(ext[w] * 0.25, Math.max(0.04, p.volume / Math.max(1e-6, 2 * ext[2] * ext[d])));
+  const meshVolume = p.fill * p.volume; // p.volume is the hull's; fill = mesh / hull
+  const t = Math.min(ext[w] * 0.25, Math.max(0.04, meshVolume / Math.max(1e-6, 2 * ext[2] * ext[d])));
   const box = (a0: number, a1: number): PreparedPart => {
     const v: number[] = [];
     for (const a of [a0, a1]) for (const b of [mn[d], mx[d]]) for (const z of [mn[2], mx[2]]) {
@@ -629,12 +630,14 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     for (let i = 0; i < plan.length; i += 2) { const d = Math.hypot(plan[i] - p.x, plan[i + 1] - p.y); if (d < best) { best = d; k = i; } }
     let px = p.x, py = p.y, s = 0;
     const AHEAD = 1.6, STEP = 0.1, CLEAR = 0.45;
-    // never stop where a walker is about to pass: standing in their lane is worse than clearing it
+    // a walker about to pass where the robot stands: stopping in their lane is worse than clearing it, so that
+    // walker is ignored (the robot keeps going); other walkers still count
+    const inLane = new Set<Entity>();
     for (const e of walkers) {
       const r = Math.max(0.2, e.radius) + CLEAR;
       for (let dt = 0; dt <= 3.0; dt += 0.2) {
         const q = samplePath(e.mover!.path, t0 + dt, e.mover!.loop !== false);
-        if (Math.hypot(q.x - p.x, q.y - p.y) < r) return false;
+        if (Math.hypot(q.x - p.x, q.y - p.y) < r) { inLane.add(e); break; }
       }
     }
     for (let i = k; i + 1 < plan.length && s < AHEAD; i += 2) {
@@ -646,6 +649,7 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
         const x = ax + ((bx - ax) * u) / L, y = ay + ((by - ay) * u) / L;
         const tau = s / v;
         for (const e of walkers) {
+          if (inLane.has(e)) continue;
           const r = Math.max(0.2, e.radius) + CLEAR;
           for (let dt = -1.0; dt <= 1.2; dt += 0.2) {
             if (tau + dt < 0) continue;
@@ -834,11 +838,24 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
       pushes.push(...info.newPushes);
       left -= k;
       if (this.robotStep % CHUNK === 0 && this.status === 'running') { const p = this.robotPose(); run.path.push(p.x, p.y); }
-      if (this.robotStep >= run.total || this.status !== 'running') run.result = this.trialResult(run);
+      if (this.robotStep >= run.total || this.status !== 'running' || this.trialStuck(run)) run.result = this.trialResult(run);
     }
     info.newContacts = contacts;
     info.newPushes = pushes;
     return info;
+  }
+
+  /**
+   * A trial where the robot has stopped moving ends early instead of leaning on an object until the time
+   * limit: under 20 cm of net movement over the last 8 s (path samples are 0.5 s apart). Scenes with walkers are
+   * exempt, since waiting for someone to pass is progress too. Reported as a timeout at the moment it gave up.
+   */
+  private trialStuck(run: TrialRun): boolean {
+    const WINDOW = 16, path = run.path, n = path.length / 2;
+    if (this.status !== 'running' || this.robotStep % 250 !== 0 || n <= WINDOW || this.entities.some((e) => e.mover)) return false;
+    // net movement, not progress toward the goal: a planner detour around a long object is not stuck
+    const a = n - 1 - WINDOW, b = n - 1;
+    return Math.hypot(path[2 * b] - path[2 * a], path[2 * b + 1] - path[2 * a + 1]) < 0.2;
   }
 
   private trialResult(run: TrialRun): TrialResult {

@@ -61,7 +61,7 @@ async function physics(id) {
 
 for (const c of COURSES) {
   if (process.env.ONLY && !c.title.startsWith(process.env.ONLY)) continue;
-  if (existing.has(c.title)) { console.log(`skip "${c.title}": already in the gauntlet`); continue; }
+  if (existing.has(c.title) && !dry) { console.log(`skip "${c.title}": already in the gauntlet`); continue; }
   const objs = c.objects.map(([slug, x, y, yaw, kind]) => ({ e: bySlug(slug), x, y, yaw, kind: kind ?? 'object' })).filter((o) => o.e);
   if (objs.length < c.objects.length) { console.log(`skip "${c.title}": missing ${c.objects.length - objs.length} objects`); continue; }
   const sceneObjects = [];
@@ -74,7 +74,7 @@ for (const c of COURSES) {
   }
   const seed = 1000 + COURSES.indexOf(c);
   const goal = { x: 4.5, y: 0 };
-  const s = e.runTrials({ scene: { objects: sceneObjects, movers, goal, start: { x: 0, y: 0, yaw: 0 } }, n: 10, seed, mode: c.mode, pushes: c.pushes ? { count: 1, force: 120 } : null, maxSeconds: 20 });
+  const s = e.runTrials({ scene: { objects: sceneObjects, movers, goal, start: { x: 0, y: 0, yaw: 0 } }, n: 10, seed, mode: c.mode, pushes: c.pushes ? { count: 1, force: 120 } : null, maxSeconds: movers.length ? 30 : 20 });
   const pass = s.trials.filter((t) => t.result === 'goal').length;
   console.log(`${c.title}: ${pass}/10 (${c.mode}${c.pushes ? ', shoves' : ''})`);
   if (dry) console.log('  ' + s.trials.map((t) => t.result[0] + (t.time != null ? t.time.toFixed(1) : '')).join(' '));

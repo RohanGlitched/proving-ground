@@ -1,3 +1,4 @@
+import { ChallengeList } from "@/components/gauntlet/ChallengeList";
 import Link from "next/link";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
@@ -57,7 +58,7 @@ export default function Home() {
             <div className="md:col-span-5">
               <h2 className="placard-sm text-[31px] sm:text-[39px]">One walk is an anecdote. Ten is a test.</h2>
               <p className="mt-5 text-[17px] leading-[1.7] text-ink-2">
-                Every course runs ten times with a different seed: the robot starts a little off-line, objects shift by a few centimetres, and
+                Every course runs ten times with a different seed: the robot starts a little off-line and turned a few degrees, its joints carry a little noise, and
                 sometimes something shoves the robot mid-stride. You get a pass rate, where it fell, and what it tripped on.
               </p>
             </div>
@@ -97,6 +98,7 @@ export default function Home() {
             Remix one, beat it with the planner, or make it meaner.
           </p>
           <GauntletPreview />
+          <ChallengeList />
         </section>
 
         {/* MEASURED */}

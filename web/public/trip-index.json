@@ -1,5 +1,5 @@
 {
- "generatedAt": 1794185226371,
+ "generatedAt": 1794188517699,
  "method": "object 1.4 m ahead, 10 seeded blind walks (and 10 with the planner, 20 s limit), start jitter 10 cm / 10 deg, object jitter 10 cm / 34 deg, 14 s limit",
  "items": {
   "2kde4rldpa": {
@@ -632,7 +632,7 @@
    "falls": 0,
    "timeouts": 6,
    "touched": 10,
-   "mass": 134.6448,
+   "mass": 80,
    "seed": 11,
    "planner": {
     "passes": 10,
@@ -648,7 +648,7 @@
    "falls": 0,
    "timeouts": 8,
    "touched": 10,
-   "mass": 182.514,
+   "mass": 80,
    "seed": 11,
    "planner": {
     "passes": 10,
@@ -773,8 +773,8 @@
    "name": "Pallet",
    "n": 10,
    "passes": 1,
-   "falls": 8,
-   "timeouts": 1,
+   "falls": 7,
+   "timeouts": 2,
    "touched": 10,
    "mass": 37.0068,
    "seed": 11,
@@ -808,7 +808,7 @@
    "falls": 0,
    "timeouts": 8,
    "touched": 10,
-   "mass": 94.132,
+   "mass": 80,
    "seed": 11,
    "planner": {
     "passes": 10,

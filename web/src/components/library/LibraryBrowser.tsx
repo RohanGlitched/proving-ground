@@ -6,7 +6,8 @@ import { Thumb } from "@/components/arena/Thumb";
 import { sizeLabel } from "@/components/arena/LibraryDrawer";
 import { ObjectViewer } from "./ObjectViewer";
 import { Stamp } from "@/components/ui/marks";
-import { runTripTest, tripIndex, verdict, type TripResult } from "@/lib/client/trips";
+import { defaultDensity } from "@/lib/density";
+import { massLabel, runTripTest, tripIndex, verdict, type TripResult } from "@/lib/client/trips";
 
 type Sort = "new" | "big" | "parts";
 
@@ -94,7 +95,7 @@ export function LibraryBrowser() {
     try {
       const { buildPack } = await import("@/lib/client/pack");
       const r = await buildPack(e);
-      setPackMsg(`Downloaded: ${r.parts} hull${r.parts === 1 ? "" : "s"}, ${r.mass.toFixed(2)} kg at 400 kg/m³.`);
+      setPackMsg(`Downloaded: ${r.parts} hull${r.parts === 1 ? "" : "s"}, ${r.mass.toFixed(2)} kg at ${defaultDensity(e)} kg/m³.`);
     } catch (x) {
       setPackMsg(`Could not build the pack: ${(x as Error).message}`);
     } finally {
@@ -152,7 +153,10 @@ export function LibraryBrowser() {
               <Thumb id={e.id} alt={e.name} className="aspect-square" />
               <div className="border-t border-ink/8 px-3 py-2.5">
                 <div className="truncate font-semibold">{e.name}</div>
-                <div className="data mt-0.5 truncate text-[11.5px] text-ink-3">{sizeLabel(e.size, e.kind)}</div>
+                <div className="data mt-0.5 truncate text-[11.5px] text-ink-3">
+                  {sizeLabel(e.size, e.kind)}
+                  {trips[e.id]?.mass ? ` · ${massLabel(trips[e.id].mass!)}` : ""}
+                </div>
                 {trips[e.id] && (
                   <div className="mt-2">
                     <Stamp tone={verdict(trips[e.id]).tone} rotate={-3} className="!px-1.5 !text-[10.5px]">
@@ -190,6 +194,14 @@ export function LibraryBrowser() {
                   <dd className="tnum">{sizeLabel(open.size, open.kind)}</dd>
                   <dt className="text-ink-3">Parts</dt>
                   <dd className="tnum">{open.parts} convex {open.parts === 1 ? "solid" : "solids"}</dd>
+                  {trips[open.id]?.mass ? (
+                    <>
+                      <dt className="text-ink-3">Mass</dt>
+                      <dd className="tnum">
+                        {massLabel(trips[open.id].mass!)} <span className="text-ink-3">at {defaultDensity(open)} kg/m³, from the closed mesh volume</span>
+                      </dd>
+                    </>
+                  ) : null}
                   <dt className="text-ink-3">Made from</dt>
                   <dd>{open.source === "photo" ? "a photo" : open.source === "text" ? "a sentence" : "the starter library"}</dd>
                   {open.style && (

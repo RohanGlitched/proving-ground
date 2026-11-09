@@ -75,3 +75,24 @@ test('toMJCF output compiles in MuJoCo with the right mass', async () => {
   assert.equal(Object.keys(out.files).length, 8);
   m.delete();
 });
+
+test('toMJCF exports an articulated object: fixed base, the moving part on its hinge with limits', async () => {
+  // a frame (two posts and a header, concave) and a door leaf hinged at one post
+  const box = (x0, x1, y0, y1, z0, z1) => Float32Array.from([x0, y0, z0, x1, y0, z0, x0, y1, z0, x1, y1, z0, x0, y0, z1, x1, y0, z1, x0, y1, z1, x1, y1, z1]);
+  const posts = [...box(-0.5, -0.45, -0.05, 0.05, 0, 2), ...box(0.45, 0.5, -0.05, 0.05, 0, 2), ...box(-0.5, 0.5, -0.05, 0.05, 1.95, 2)];
+  const frame = { points: Float32Array.from(posts), meshVolume: 0.05 * 0.1 * 2 * 2 + 1 * 0.1 * 0.05 };
+  const leaf = { points: box(-0.44, 0.44, -0.02, 0.02, 0.01, 1.94) };
+  const joints = [{ type: 'revolute', child: 1, pivot: [-0.44, 0, 0], axis: [0, 1, 0], lower: 0, upper: 1.6 }];
+  const out = toMJCF({ name: 'test door', parts: [frame, leaf], mass: 20, joints });
+  const { mujoco } = await loadAll();
+  mujoco.FS.mkdirTree('/t_door/meshes', 0o777);
+  for (const [f, b] of Object.entries(out.files)) mujoco.FS.writeFile(`/t_door/${f}`, b);
+  mujoco.FS.writeFile('/t_door/object.xml', out.xml);
+  mujoco.FS.writeFile('/t_door/scene.xml', out.scene);
+  const m = mujoco.MjModel.from_xml_path('/t_door/scene.xml');
+  assert.equal(m.njnt, 1, 'one hinge, no free joint');
+  assert.equal(m.jnt_type[0], 3, 'hinge');
+  assert.ok(Math.abs(m.jnt_range[1] - 1.6) < 1e-6);
+  assert.ok(out.xml.includes('_part2'), 'the concave frame became two posts plus the leaf');
+  m.delete();
+});

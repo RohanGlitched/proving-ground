@@ -2,6 +2,7 @@
 // The phone side of pairing: take a photo, send it to Lux3D, watch it land on the big screen.
 import { useEffect, useState } from "react";
 import { getJob, makeObject, type PublicJob } from "@/lib/client/api";
+import { shrinkPhoto } from "@/lib/client/shrinkPhoto";
 import { Target, Stamp } from "@/components/ui/marks";
 
 export function SnapApp({ code }: { code: string }) {
@@ -45,7 +46,7 @@ export function SnapApp({ code }: { code: string }) {
         setRoom("missing");
         return;
       }
-      const r = await makeObject({ image: file, label: label.trim() || undefined });
+      const r = await makeObject({ image: await shrinkPhoto(file), label: label.trim() || undefined });
       const posted = await fetch(`/api/rooms/${code}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jobId: r.jobId }) }).catch(() => null);
       setLinked(!!posted?.ok);
       setJob(r.job ?? (await getJob(r.jobId)));
@@ -95,6 +96,7 @@ export function SnapApp({ code }: { code: string }) {
           <button onClick={send} disabled={!file || busy} className="mt-4 h-13 h-12 w-full rounded-[10px] bg-target text-[17px] font-semibold disabled:opacity-45">
             {busy ? "Sending…" : file ? "Send to the arena" : "Take a photo first"}
           </button>
+          <p className="mt-3 text-[14px] text-ink-3">Your photo and the object are shown in the public library.</p>
           {err && <p className="mt-3 text-fault">{err}</p>}
         </>
       )}

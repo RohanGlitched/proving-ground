@@ -8,6 +8,17 @@ export const config = {
   get perIpHour() {
     return num(process.env.LIMIT_PER_IP_HOUR, 3);
   },
+  get perIpDay() {
+    return num(process.env.LIMIT_PER_IP_DAY, 6);
+  },
+  /** Lux3D exports per IP per rolling hour. */
+  get exportsPerIpHour() {
+    return num(process.env.LIMIT_EXPORTS_PER_IP_HOUR, 4);
+  },
+  /** Lux3D exports per UTC day overall (they share the one Lux3D queue with makes). */
+  get exportsPerDay() {
+    return num(process.env.LIMIT_EXPORTS_PER_DAY, 30);
+  },
   get perDay() {
     return num(process.env.LIMIT_PER_DAY, 40);
   },
@@ -29,6 +40,9 @@ export const config = {
     return num(process.env.SPLIT_MIN_DIM, 0.12);
   },
 };
+
+/** Objects in the curated public library (shown in limit messages). */
+export const LIBRARY_SIZE = 72;
 
 /** Measured stage durations (s) for ETAs; Nov 9 2026. */
 export const TYPICAL_SECONDS: Record<string, number> = {

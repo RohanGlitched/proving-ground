@@ -19,7 +19,7 @@ for (const it of items) {
     for (let i = 0; i < s.length; i += 3) { o[i] = s[i]; o[i + 1] = -s[i + 2]; o[i + 2] = s[i + 1]; }
     return { points: o, name: p.name, ...(p.volume > 0 ? { meshVolume: p.volume } : {}) };
   });
-  const mass = doc.volume ? doc.volume * defaultDensity(it) : undefined;
+  const mass = doc.volume ? Math.min(80, Math.max(0.05, doc.volume * defaultDensity(it))) : undefined; // the engine clamps mass to 0.05..80 kg
   const scene = { objects: [{ id: it.id, name: it.name, parts, x: 1.4, y: 0, yaw: it.kind === 'articulated' ? -1.5708 : 0.3, mass, ...(doc.joints?.length ? { joints: doc.joints } : {}) }], goal: { x: 3.6, y: 0 }, start: { x: 0, y: 0, yaw: 0 } };
   const s = e.runTrials({ scene, n: 10, seed: 11, mode: 'blind', jitter: { startPos: 0.1, startYaw: 0.17, objectPos: 0.1, objectYaw: 0.6 }, maxSeconds: 14 });
   const falls = s.trials.filter((t) => t.result === 'fell').length;

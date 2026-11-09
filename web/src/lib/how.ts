@@ -44,5 +44,7 @@ export const HOW = {
   ],
   changelog: [
     ["Nov 9", "Probes (Lux3D upload, image and text to 3D, part-split, price quotes), then the whole build: robot controller in a worker, arena, ten-run trials, planner, library with trip tests, gauntlet, phone pairing, walking people, robot-ready packs."],
+    ["Nov 9, later", "Doors and gates on real hinges from Lux3D articulation. The planner waits for people crossing. Falls in slow motion with a thud, Shove, Steer. A size check against typical sizes, densities per kind of object. Share this fail."],
+    ["Nov 9, evening", "Challenges: fix a course in as few moves as possible, trip the robot with the least mass, steer it home against the clock. Trials that stop making progress end early instead of running out the clock. Walkers collide as their body, not their T-pose. Packs export hinges. 72 objects, 23 courses."],
   ] as [string, string][],
 };
