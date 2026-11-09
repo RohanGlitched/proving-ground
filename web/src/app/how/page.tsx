@@ -104,7 +104,9 @@ export default function HowPage() {
             </p>
             <p>
               Lux3D predicts the object&apos;s real size. The GLB arrives in metres with its bounding box in the metadata, so a generated sneaker
-              is 28 cm long and a chair is 85 cm tall without anyone typing a dimension.
+              is 28 cm long and a chair is 85 cm tall without anyone typing a dimension. It is not always right: a door once came back
+              3.9 m tall and a street trash can 38 cm. Each catalog object has a typical largest size, and when Lux3D&apos;s answer is more
+              than 35% off it, the pipeline scales the model to that size before the physics is built.
             </p>
           </Section>
 

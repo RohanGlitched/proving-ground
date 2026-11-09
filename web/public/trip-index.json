@@ -1,6 +1,6 @@
 {
- "generatedAt": 1794170000398,
- "method": "object 1.4 m ahead, 10 seeded blind walks, start jitter 10 cm / 10 deg, object jitter 10 cm / 34 deg, 14 s limit",
+ "generatedAt": 1794185226371,
+ "method": "object 1.4 m ahead, 10 seeded blind walks (and 10 with the planner, 20 s limit), start jitter 10 cm / 10 deg, object jitter 10 cm / 34 deg, 14 s limit",
  "items": {
   "2kde4rldpa": {
    "slug": "kitchen-chair",
@@ -11,7 +11,12 @@
    "timeouts": 4,
    "touched": 10,
    "mass": 5.1452,
-   "seed": 11
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
   },
   "e1xwqhzq4m": {
    "slug": "sneaker",
@@ -22,7 +27,12 @@
    "timeouts": 0,
    "touched": 10,
    "mass": 0.5486000000000001,
-   "seed": 11
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
   },
   "eb2mk9glhr": {
    "slug": "traffic-cone",
@@ -32,8 +42,13 @@
    "falls": 0,
    "timeouts": 0,
    "touched": 10,
-   "mass": 2.65548,
-   "seed": 11
+   "mass": 1.99161,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
   },
   "tgsfc323l1": {
    "slug": "park-bench",
@@ -44,7 +59,12 @@
    "timeouts": 10,
    "touched": 10,
    "mass": 55.936,
-   "seed": 11
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
   },
   "drm4noi2w4": {
    "slug": "cardboard-box",
@@ -55,18 +75,28 @@
    "timeouts": 1,
    "touched": 10,
    "mass": 10.5496,
-   "seed": 11
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
   },
   "k18gtp5kno": {
    "slug": "car-tire",
    "name": "Car tire",
    "n": 10,
-   "passes": 5,
+   "passes": 8,
    "falls": 0,
-   "timeouts": 5,
+   "timeouts": 2,
    "touched": 10,
-   "mass": 18.028,
-   "seed": 11
+   "mass": 15.7745,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
   },
   "5tiztzpoln": {
    "slug": "basketball",
@@ -76,8 +106,13 @@
    "falls": 0,
    "timeouts": 0,
    "touched": 10,
-   "mass": 3.18192,
-   "seed": 11
+   "mass": 0.59661,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
   },
   "sn0fwqv8v6": {
    "slug": "laundry-basket",
@@ -87,8 +122,939 @@
    "falls": 0,
    "timeouts": 0,
    "touched": 10,
-   "mass": 2.4758,
-   "seed": 11
+   "mass": 0.309475,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "as1gpjkird": {
+   "slug": "potted-plant",
+   "name": "Potted plant",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 2.8061599999999998,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "amj2b87k05": {
+   "slug": "office-chair",
+   "name": "Office chair",
+   "n": 10,
+   "passes": 1,
+   "falls": 0,
+   "timeouts": 9,
+   "touched": 10,
+   "mass": 9.8496,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "ixfts3d57e": {
+   "slug": "door",
+   "name": "Door",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 59.484,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "a49v6l6i2j": {
+   "name": "A stack of three old car tires",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 62.083999999999996,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "kruez0uu8r": {
+   "slug": "garden-gate",
+   "name": "Garden gate",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 35.0084,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "xhyj8f6ihe": {
+   "name": "Old rucksack",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 1,
+   "mass": 22.6924,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "0t63orq912": {
+   "slug": "wheelie-bin",
+   "name": "Wheelie bin",
+   "n": 10,
+   "passes": 1,
+   "falls": 0,
+   "timeouts": 9,
+   "touched": 10,
+   "mass": 13.1295,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "k6k9nr23bg": {
+   "slug": "skateboard",
+   "name": "Skateboard",
+   "n": 10,
+   "passes": 0,
+   "falls": 10,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 2.79472,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "yiaspu19x2": {
+   "slug": "toolbox",
+   "name": "Toolbox",
+   "n": 10,
+   "passes": 2,
+   "falls": 3,
+   "timeouts": 5,
+   "touched": 10,
+   "mass": 11.8068,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "2nqwr8gn8a": {
+   "slug": "watermelon",
+   "name": "Watermelon",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 8.4398,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "p814wf7qr4": {
+   "slug": "stack-of-books",
+   "name": "Stack of books",
+   "n": 10,
+   "passes": 9,
+   "falls": 1,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 3.28784,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "0119idlp55": {
+   "slug": "bar-stool",
+   "name": "Bar stool",
+   "n": 10,
+   "passes": 8,
+   "falls": 0,
+   "timeouts": 2,
+   "touched": 10,
+   "mass": 3.9504400000000004,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "sj994t8j1f": {
+   "slug": "floor-lamp",
+   "name": "Floor lamp",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 2.26884,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "1a5qd71pru": {
+   "slug": "side-table",
+   "name": "Side table",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 21.4956,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "gdt9149s1h": {
+   "slug": "bean-bag",
+   "name": "Bean bag",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 17.7132,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "233lyl9qod": {
+   "slug": "rolled-rug",
+   "name": "Rolled rug",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 71.001,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "3o1l0gpa46": {
+   "slug": "folding-chair",
+   "name": "Folding chair",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 2.1524,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "8gok46xzw8": {
+   "slug": "step-stool",
+   "name": "Step stool",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 3.12616,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "pxottlk77d": {
+   "slug": "coat-rack",
+   "name": "Coat rack",
+   "n": 10,
+   "passes": 2,
+   "falls": 0,
+   "timeouts": 8,
+   "touched": 10,
+   "mass": 8.362400000000001,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "3md8h7z2sf": {
+   "slug": "standing-fan",
+   "name": "Standing fan",
+   "n": 10,
+   "passes": 5,
+   "falls": 0,
+   "timeouts": 5,
+   "touched": 10,
+   "mass": 4.7368,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "muubkslo03": {
+   "slug": "ottoman",
+   "name": "Ottoman",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 44.916,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "jl292ab2rf": {
+   "slug": "toy-truck",
+   "name": "Toy truck",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 0.45469499999999996,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "mu8bwhxfyz": {
+   "slug": "teddy-bear",
+   "name": "Teddy bear",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 0.45719999999999994,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "7k8g4za82g": {
+   "slug": "block-pile",
+   "name": "Pile of blocks",
+   "n": 10,
+   "passes": 5,
+   "falls": 5,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 7.061599999999999,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "r5z0lpz9zl": {
+   "slug": "rocking-horse",
+   "name": "Rocking horse",
+   "n": 10,
+   "passes": 6,
+   "falls": 1,
+   "timeouts": 3,
+   "touched": 10,
+   "mass": 11.1084,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "sb6xuve3bq": {
+   "slug": "toy-train",
+   "name": "Toy train",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 0.5790799999999999,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "k0bbtruxhy": {
+   "slug": "football",
+   "name": "Football",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 1.12792,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "m26d3dew93": {
+   "slug": "hurdle",
+   "name": "Hurdle",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 13.6004,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "5a13p40lpu": {
+   "slug": "kettlebell",
+   "name": "Kettlebell",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 10.113359999999998,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "sx9utz2qb4": {
+   "slug": "yoga-ball",
+   "name": "Yoga ball",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 3.2929500000000003,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "b6m5bhd1gj": {
+   "slug": "agility-ladder",
+   "name": "Agility hurdles",
+   "n": 10,
+   "passes": 2,
+   "falls": 1,
+   "timeouts": 7,
+   "touched": 10,
+   "mass": 7.9628000000000005,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "hvt4zlc5nf": {
+   "slug": "rock",
+   "name": "Rock",
+   "n": 10,
+   "passes": 4,
+   "falls": 0,
+   "timeouts": 6,
+   "touched": 10,
+   "mass": 134.6448,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "1kt9ikglg2": {
+   "slug": "log",
+   "name": "Log",
+   "n": 10,
+   "passes": 2,
+   "falls": 0,
+   "timeouts": 8,
+   "touched": 10,
+   "mass": 182.514,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "apbp0f0syv": {
+   "slug": "fire-hydrant",
+   "name": "Fire hydrant",
+   "n": 10,
+   "passes": 2,
+   "falls": 0,
+   "timeouts": 8,
+   "touched": 10,
+   "mass": 46.3848,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "m6dhn5t638": {
+   "slug": "trash-can",
+   "name": "Trash can",
+   "n": 10,
+   "passes": 6,
+   "falls": 0,
+   "timeouts": 4,
+   "touched": 10,
+   "mass": 1.52868,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "3x0i6pg7hl": {
+   "slug": "mailbox",
+   "name": "Mailbox",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 10.0136,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "o9gllqor79": {
+   "slug": "bollard",
+   "name": "Bollard",
+   "n": 10,
+   "passes": 9,
+   "falls": 1,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 3.60528,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "wtrymkmj21": {
+   "slug": "garden-gnome",
+   "name": "Garden gnome",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 0.8080800000000001,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "3hb62oh401": {
+   "slug": "wheelbarrow",
+   "name": "Wheelbarrow",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 27.2124,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "ne3mnfevkz": {
+   "slug": "shopping-cart",
+   "name": "Shopping cart",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 7.5876,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "y971bldk4w": {
+   "slug": "wooden-pallet",
+   "name": "Pallet",
+   "n": 10,
+   "passes": 1,
+   "falls": 8,
+   "timeouts": 1,
+   "touched": 10,
+   "mass": 37.0068,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "z3qrcoa1lv": {
+   "slug": "sawhorse",
+   "name": "Sawhorse",
+   "n": 10,
+   "passes": 2,
+   "falls": 0,
+   "timeouts": 8,
+   "touched": 10,
+   "mass": 18.4992,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "jpiwzzs7mp": {
+   "slug": "barrel",
+   "name": "Barrel",
+   "n": 10,
+   "passes": 2,
+   "falls": 0,
+   "timeouts": 8,
+   "touched": 10,
+   "mass": 94.132,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "de19ee5j1o": {
+   "slug": "cinder-block",
+   "name": "Cinder block",
+   "n": 10,
+   "passes": 4,
+   "falls": 6,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 7.57456,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "ftp1z7rpsy": {
+   "slug": "sandbag",
+   "name": "Sandbag",
+   "n": 10,
+   "passes": 8,
+   "falls": 2,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 57.4704,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "bm1gwd05zw": {
+   "slug": "bicycle",
+   "name": "Bicycle",
+   "n": 10,
+   "passes": 0,
+   "falls": 8,
+   "timeouts": 2,
+   "touched": 10,
+   "mass": 16.0672,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "3wiw3tes5n": {
+   "slug": "pumpkin",
+   "name": "Pumpkin",
+   "n": 10,
+   "passes": 5,
+   "falls": 0,
+   "timeouts": 5,
+   "touched": 10,
+   "mass": 19.791800000000002,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "9mydgn4z62": {
+   "slug": "pineapple",
+   "name": "Pineapple",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 1.80855,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "ctu0q9ugqe": {
+   "slug": "pizza-boxes",
+   "name": "Pizza boxes",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 2.60802,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "xfsa1wh8j1": {
+   "slug": "suitcase",
+   "name": "Suitcase",
+   "n": 10,
+   "passes": 1,
+   "falls": 0,
+   "timeouts": 9,
+   "touched": 10,
+   "mass": 18.849,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "r0jjskd1v6": {
+   "slug": "guitar-case",
+   "name": "Guitar case",
+   "n": 10,
+   "passes": 3,
+   "falls": 7,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 4.66608,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "ziazk79u6j": {
+   "slug": "robot-vacuum",
+   "name": "Robot vacuum",
+   "n": 10,
+   "passes": 6,
+   "falls": 2,
+   "timeouts": 2,
+   "touched": 10,
+   "mass": 7.3751999999999995,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "mra9ief37c": {
+   "slug": "banana-peel",
+   "name": "Banana peel",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 9,
+   "mass": 0.07916000000000001,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "syeroq64gy": {
+   "slug": "bucket",
+   "name": "Bucket",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 0.061692,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "8nhzlwag4s": {
+   "slug": "ladder",
+   "name": "Ladder",
+   "n": 10,
+   "passes": 4,
+   "falls": 5,
+   "timeouts": 1,
+   "touched": 10,
+   "mass": 16.212,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "nvtuq2e5kr": {
+   "slug": "cat-bed",
+   "name": "Cat bed",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 1.44207,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "uquehfjvyn": {
+   "slug": "umbrella",
+   "name": "Umbrella",
+   "n": 10,
+   "passes": 10,
+   "falls": 0,
+   "timeouts": 0,
+   "touched": 10,
+   "mass": 0.31045,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
+  },
+  "s1y803pxru": {
+   "slug": "dog-house",
+   "name": "Dog house",
+   "n": 10,
+   "passes": 0,
+   "falls": 0,
+   "timeouts": 10,
+   "touched": 10,
+   "mass": 43.29,
+   "seed": 11,
+   "planner": {
+    "passes": 10,
+    "falls": 0,
+    "timeouts": 0
+   }
   }
  }
 }

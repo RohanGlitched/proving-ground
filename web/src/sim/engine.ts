@@ -81,6 +81,35 @@ export function prepareParts(parts: CollisionPart[]): PreparedPart[] {
 const fmt = (v: number) => String(Math.round(v * 1e5) / 1e5);
 
 /**
+ * Lux3D people are rigged in a T-pose, so their bind-pose mesh is up to 1.8 m wide at the arms. The walk clip
+ * keeps the arms at the sides, so a walker collides as its body within 0.3 m of the centre line (a 0.6 m box
+ * in plan); height is unchanged. Cached per part so the hull is built once.
+ */
+const torsoCache = new WeakMap<CollisionPart, CollisionPart>();
+function torsoParts(parts: CollisionPart[]): CollisionPart[] {
+  const H = 0.3;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of parts) for (let i = 0; i < p.points.length; i += 3) {
+    x0 = Math.min(x0, p.points[i]); x1 = Math.max(x1, p.points[i]); y0 = Math.min(y0, p.points[i + 1]); y1 = Math.max(y1, p.points[i + 1]);
+  }
+  if (x1 - x0 <= 2 * H && y1 - y0 <= 2 * H) return parts;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  return parts.map((p) => {
+    let q = torsoCache.get(p);
+    if (!q) {
+      const pts = Float32Array.from(p.points);
+      for (let i = 0; i < pts.length; i += 3) {
+        pts[i] = Math.min(cx + H, Math.max(cx - H, pts[i]));
+        pts[i + 1] = Math.min(cy + H, Math.max(cy - H, pts[i + 1]));
+      }
+      q = { points: pts, name: p.name };
+      torsoCache.set(p, q);
+    }
+    return q;
+  });
+}
+
+/**
  * A door or gate frame is one concave Lux3D part, and its convex hull would fill the doorway. When the mesh
  * fills under 45% of its hull, collide with two posts at the ends of its width instead (full height and
  * depth, thickness from the measured mesh volume). Returns null for solid parts.
@@ -206,7 +235,7 @@ export class Engine {
       // articulated objects: the base stands fixed, child parts hang on joints (single level, base = parts not moved by any joint)
       const joints = !mover ? ((o as SceneObject).joints ?? []).filter((j) => j.child >= 0 && j.child < o.parts.length) : [];
       const fixed = fixedIn || joints.length > 0;
-      const prepOne = o.parts.map((p) => prepareParts([p])[0] ?? null);
+      const prepOne = (mover ? torsoParts(o.parts) : o.parts).map((p) => prepareParts([p])[0] ?? null);
       // articulated base parts that are frames collide as two posts (see framePosts)
       const prepAll: (PreparedPart | null)[] = [];
       const srcIndex: number[] = [];
@@ -600,6 +629,14 @@ ${excl.length ? `<contact>${excl.join('')}</contact>` : ''}
     for (let i = 0; i < plan.length; i += 2) { const d = Math.hypot(plan[i] - p.x, plan[i + 1] - p.y); if (d < best) { best = d; k = i; } }
     let px = p.x, py = p.y, s = 0;
     const AHEAD = 1.6, STEP = 0.1, CLEAR = 0.45;
+    // never stop where a walker is about to pass: standing in their lane is worse than clearing it
+    for (const e of walkers) {
+      const r = Math.max(0.2, e.radius) + CLEAR;
+      for (let dt = 0; dt <= 3.0; dt += 0.2) {
+        const q = samplePath(e.mover!.path, t0 + dt, e.mover!.loop !== false);
+        if (Math.hypot(q.x - p.x, q.y - p.y) < r) return false;
+      }
+    }
     for (let i = k; i + 1 < plan.length && s < AHEAD; i += 2) {
       const ax = i === k ? px : plan[i], ay = i === k ? py : plan[i + 1];
       const bx = plan[i + 2] ?? plan[i], by = plan[i + 3] ?? plan[i + 1];

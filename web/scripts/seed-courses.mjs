@@ -29,8 +29,23 @@ const COURSES = [
   { title: 'Push the door open', mode: 'blind', pushes: false, objects: [['door', 1.6, 0.0, -1.5708]] },
   { title: 'The gate opens the other way', mode: 'blind', pushes: false, objects: [['garden-gate', 1.6, 0.0, 1.5708]] },
   { title: 'Gate, then a cone', mode: 'blind', pushes: false, objects: [['garden-gate', 1.5, 0.0, -1.5708], ['traffic-cone', 2.8, 0.1, 0]] },
+  { title: 'School run (planner)', mode: 'planner', pushes: false, objects: [['traffic-cone', 1.2, 0.35, 0], ['kid', 2.2, 0, 0, 'mover'], ['bollard', 3.3, -0.3, 0]] },
+  { title: 'Lunch rush (planner)', mode: 'planner', pushes: false, objects: [['office-worker', 1.6, 0, 0, 'mover'], ['delivery-worker', 3.0, 0, 0, 'mover'], ['cardboard-box', 2.3, 0.4, 0.6]] },
   { title: 'Bin day (planner)', mode: 'planner', pushes: false, objects: [['wheelie-bin', 1.7, 0.1, 0.3], ['wheelie-bin', 2.9, -0.25, 1.0]] },
 ];
+
+// same as ArenaApp.tsx: a walker crosses at x, from one side to the other and back, about 0.9 m/s
+const WALK_SPAN = 2.4, FACE = Math.PI;
+function crossingPath(x, phase = 0) {
+  const leg = (2 * WALK_SPAN) / 0.9;
+  const keys = [
+    { x, y: -WALK_SPAN, yaw: FACE, t: 0 }, { x, y: WALK_SPAN, yaw: FACE, t: leg }, { x, y: WALK_SPAN, yaw: 0, t: leg + 0.6 },
+    { x, y: -WALK_SPAN, yaw: 0, t: 2 * leg + 0.6 }, { x, y: -WALK_SPAN, yaw: FACE, t: 2 * leg + 1.2 },
+  ];
+  if (!phase) return keys;
+  const T = keys[keys.length - 1].t, shift = (phase % 1) * T;
+  return keys.map((k) => ({ ...k, t: (k.t + shift) % T })).sort((a, b) => a.t - b.t);
+}
 
 const existing = new Set(((await (await fetch(`${base}/api/courses?sort=new`)).json()).items ?? []).map((c) => c.title));
 const e = await makeEngine('/seed');
@@ -45,23 +60,28 @@ async function physics(id) {
 }
 
 for (const c of COURSES) {
+  if (process.env.ONLY && !c.title.startsWith(process.env.ONLY)) continue;
   if (existing.has(c.title)) { console.log(`skip "${c.title}": already in the gauntlet`); continue; }
-  const objs = c.objects.map(([slug, x, y, yaw]) => ({ e: bySlug(slug), x, y, yaw })).filter((o) => o.e);
+  const objs = c.objects.map(([slug, x, y, yaw, kind]) => ({ e: bySlug(slug), x, y, yaw, kind: kind ?? 'object' })).filter((o) => o.e);
   if (objs.length < c.objects.length) { console.log(`skip "${c.title}": missing ${c.objects.length - objs.length} objects`); continue; }
   const sceneObjects = [];
+  const movers = [];
   for (const [i, o] of objs.entries()) {
     const ph = await physics(o.e.id);
+    // pedestrians cross the course the same way the arena makes them (crossingPath in ArenaApp.tsx)
+    if (o.kind === 'mover') { movers.push({ id: `m${i}`, name: o.e.name, parts: ph.parts, path: crossingPath(o.x, movers.length * 0.37), loop: true }); continue; }
     sceneObjects.push({ id: `o${i}`, name: o.e.name, parts: ph.parts, x: o.x, y: o.y, yaw: o.yaw, mass: ph.volume ? ph.volume * defaultDensity(o.e) : undefined, ...(ph.joints?.length ? { joints: ph.joints } : {}) });
   }
   const seed = 1000 + COURSES.indexOf(c);
   const goal = { x: 4.5, y: 0 };
-  const s = e.runTrials({ scene: { objects: sceneObjects, goal, start: { x: 0, y: 0, yaw: 0 } }, n: 10, seed, mode: c.mode, pushes: c.pushes ? { count: 1, force: 120 } : null, maxSeconds: 20 });
+  const s = e.runTrials({ scene: { objects: sceneObjects, movers, goal, start: { x: 0, y: 0, yaw: 0 } }, n: 10, seed, mode: c.mode, pushes: c.pushes ? { count: 1, force: 120 } : null, maxSeconds: 20 });
   const pass = s.trials.filter((t) => t.result === 'goal').length;
   console.log(`${c.title}: ${pass}/10 (${c.mode}${c.pushes ? ', shoves' : ''})`);
+  if (dry) console.log('  ' + s.trials.map((t) => t.result[0] + (t.time != null ? t.time.toFixed(1) : '')).join(' '));
   if (dry) continue;
   const doc = {
     title: c.title,
-    objects: objs.map((o) => ({ objectId: o.e.id, name: o.e.name, x: o.x, y: o.y, yaw: o.yaw })),
+    objects: objs.map((o) => ({ objectId: o.e.id, name: o.e.name, x: o.x, y: o.y, yaw: o.yaw, ...(o.kind === 'mover' ? { kind: 'mover' } : {}) })),
     start: { x: 0, y: 0, yaw: 0 },
     goal,
     mode: c.mode,

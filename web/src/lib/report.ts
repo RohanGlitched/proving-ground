@@ -1,15 +1,15 @@
 // Report content. Every number is measured in this repo (probe/, tests, trial runs, job records); see /how.
-// BEGIN GENERATED (scratchpad rep/gen-data.py, from the stored job records, Nov 9, 2026 3:59 IST)
+// BEGIN GENERATED (scratchpad rep/gen-data.py, from the stored job records, Nov 9, 2026 6:21 IST)
 const GENERATED = {
-  gen: {"min": 79, "max": 105, "median": 89, "n": 32},
-  rawTris: [["kitchen-chair", 17936], ["traffic-cone", 18210], ["park-bench", 19294], ["cardboard-box", 17188], ["car-tire", 14376], ["basketball", 18628], ["laundry-basket", 16592], ["potted-plant", 24540], ["office-chair", 23836], ["door", 20476], ["a49v6l6i2j", 17450], ["garden-gate", 16360], ["xhyj8f6ihe", 20560], ["wheelie-bin", 20054], ["skateboard", 19770], ["toolbox", 20418], ["watermelon", 18068], ["stack-of-books", 18098], ["bar-stool", 18016], ["floor-lamp", 32108], ["side-table", 18130], ["bean-bag", 18010], ["rolled-rug", 19146], ["folding-chair", 13446], ["step-stool", 18786], ["coat-rack", 18684], ["standing-fan", 29504], ["ottoman", 17114], ["toy-truck", 24624], ["teddy-bear", 17280], ["block-pile", 15804], ["rocking-horse", 20770], ["toy-train", 25442], ["football", 16364], ["hurdle", 24450], ["kettlebell", 18166]] as [string, number][],
-  overBudget: [["floor-lamp", 32108, 24243], ["standing-fan", 29504, 24248], ["toy-train", 25442, 24242]] as [string, number, number][],
-  triRange: [13446, 32108, 18419],
+  gen: {"min": 79, "max": 147, "median": 89, "n": 66},
+  rawTris: [["kitchen-chair", 17936], ["traffic-cone", 18210], ["park-bench", 19294], ["cardboard-box", 17188], ["car-tire", 14376], ["basketball", 18628], ["laundry-basket", 16592], ["potted-plant", 24540], ["office-chair", 23836], ["door", 20476], ["a49v6l6i2j", 17450], ["garden-gate", 16360], ["xhyj8f6ihe", 20560], ["wheelie-bin", 20054], ["skateboard", 19770], ["toolbox", 20418], ["watermelon", 18068], ["stack-of-books", 18098], ["bar-stool", 18016], ["floor-lamp", 32108], ["side-table", 18130], ["bean-bag", 18010], ["rolled-rug", 19146], ["folding-chair", 13446], ["step-stool", 18786], ["coat-rack", 18684], ["standing-fan", 29504], ["ottoman", 17114], ["toy-truck", 24624], ["teddy-bear", 17280], ["block-pile", 15804], ["rocking-horse", 20770], ["toy-train", 25442], ["football", 16364], ["hurdle", 24450], ["kettlebell", 18166], ["yoga-ball", 18136], ["agility-ladder", 19528], ["rock", 18286], ["log", 17782], ["fire-hydrant", 19338], ["trash-can", 22344], ["mailbox", 30030], ["bollard", 34860], ["garden-gnome", 19472], ["wheelbarrow", 18116], ["shopping-cart", 30624], ["wooden-pallet", 15356], ["sawhorse", 17578], ["barrel", 18916], ["cinder-block", 15584], ["sandbag", 21044], ["bicycle", 24458], ["pumpkin", 17750], ["pineapple", 27666], ["pizza-boxes", 13404], ["suitcase", 19878], ["guitar-case", 18924], ["robot-vacuum", 15312], ["banana-peel", 18048], ["bucket", 16430], ["ladder", 23438], ["cat-bed", 18258], ["umbrella", 32366], ["dog-house", 10804]] as [string, number][],
+  overBudget: [["floor-lamp", 32108, 24243], ["standing-fan", 29504, 24248], ["toy-train", 25442, 24242], ["mailbox", 30030, 24423], ["bollard", 34860, 24248], ["shopping-cart", 30624, 24513], ["pineapple", 27666, 24248], ["umbrella", 32366, 24246]] as [string, number, number][],
+  triRange: [10804, 34860, 18628],
   rawMB: [7, 12],
   webKB: [256, 817],
-  totals: {"objects": 36, "rawMB": 353, "webMB": 16.2},
-  band: [["Skateboard", "2.20 m", "0.80 m", "\u00d7 0.36"], ["Block pile", "0.21 m", "0.40 m", "\u00d7 1.90"], ["Door", "3.86 m", "2.05 m", "\u00d7 0.53"], ["Rolled rug", "1.20 m", "1.80 m", "\u00d7 1.50"], ["Rocking horse", "0.65 m", "0.90 m", "\u00d7 1.38"], ["Football", "0.22 m", "0.30 m", "\u00d7 1.36"]] as string[][],
-  checked: 31,
+  totals: {"objects": 65, "rawMB": 614, "webMB": 29.3},
+  band: [["Skateboard", "2.20 m", "0.80 m", "\u00d7 0.36"], ["Agility ladder", "0.60 m", "1.50 m", "\u00d7 2.50"], ["Trash can", "0.38 m", "0.90 m", "\u00d7 2.37"], ["Block pile", "0.21 m", "0.40 m", "\u00d7 1.90"], ["Door", "3.86 m", "2.05 m", "\u00d7 0.53"], ["Rock", "0.30 m", "0.50 m", "\u00d7 1.66"], ["Rolled rug", "1.20 m", "1.80 m", "\u00d7 1.50"], ["Pumpkin", "0.28 m", "0.40 m", "\u00d7 1.43"], ["Wheelbarrow", "2.14 m", "1.50 m", "\u00d7 0.70"], ["Rocking horse", "0.65 m", "0.90 m", "\u00d7 1.38"], ["Football", "0.22 m", "0.30 m", "\u00d7 1.36"]] as string[][],
+  checked: 60,
 };
 // END GENERATED
 const n0 = (n: number) => n.toLocaleString("en-US");
@@ -50,7 +50,7 @@ export const REPORT = {
   pipelineNotes: [
     "Inputs must go through Aholo's own upload: third-party image URLs fail silently, so every photo and every intermediate GLB is re-uploaded.",
     "Lux3D runs one task per account, so a single queue serves everyone; the library keeps the site playable while it is busy.",
-    "Lux3D predicts real size: a sneaker comes back 28 cm long and a chair 85 cm tall with no one typing a dimension.",
+    "Lux3D predicts real size for most objects: a sneaker comes back 28 cm long and a chair 85 cm tall with no one typing a dimension. When a size is more than 35% off the typical one for that kind of thing (a street trash can came back 38 cm tall), the pipeline rescales it.",
   ],
   // where the time goes, seconds from the stored job records of three finished jobs (Nov 8-9)
   timeline: [

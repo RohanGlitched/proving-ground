@@ -25,7 +25,9 @@ export const HOW = {
     ["Canvas sneaker (photo)", "1", "28 × 28 × 11", "0.55 kg at 400 kg/m³"],
   ] as (string | number)[][],
   trialExamples: [
-    ["Kitchen chair 1.5 m ahead", "10/10 (shoves it aside)", "10/10 (no contact)"],
+    ["Kitchen chair 1.4 m ahead, ten jittered starts", "5/10 (1 fall, 4 stuck against it)", "10/10 (no contact)"],
+    ["Door on its hinges, approached from the side it opens toward", "10/10 (pushes it open)", "10/10"],
+    ["Two people crossing the path (Lunch rush course)", "—", "10/10 (stops and lets them pass)"],
     ["Fixed 6 cm step across the path", "0/10 (trips)", "—"],
     ["Fixed 12 cm step across the path", "0/10 (trips)", "—"],
     ["20 kg crate in the path", "0/10 (blocked)", "routes around"],
@@ -37,7 +39,7 @@ export const HOW = {
     "Mass comes from the closed mesh volume and a density you can change. Lux3D predicts size, not weight.",
     "The arms are welded in the elbows-forward pose of Unitree's 12-joint training model, the model the policy was trained on. Changing them would change the physics the policy expects, so they stay; the real G1 swings its arms, this one cannot catch itself with them.",
     "Lux3D allows one generation at a time per account, so new objects can queue for a few minutes when the site is busy.",
-    "Walking people are kinematic: they push the robot but nothing pushes them back. Hinged objects are real MuJoCo hinges with Lux3D's limits: the robot can push a door open from the side it opens toward, and meets a wall from the other.",
+    "Walking people are kinematic: they push the robot but nothing pushes them back. Lux3D rigs them in a T-pose, so they collide as their body within 0.3 m of the centre line (a 0.6 m box), the space their walk animation actually uses. Hinged objects are real MuJoCo hinges with Lux3D's limits: the robot can push a door open from the side it opens toward, and meets a wall from the other.",
     "A Lux3D door or gate frame is one concave part whose convex hull would fill the opening, so in the arena the frame collides as two posts (sized from its measured mesh volume); the leaf collides as its own hull.",
   ],
   changelog: [
